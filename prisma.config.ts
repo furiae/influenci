@@ -1,4 +1,7 @@
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+// Local dev keeps secrets in .env.local (vercel env pull); CI/Vercel inject real env.
+loadEnv({ path: ".env.local" });
+loadEnv();
 import { defineConfig } from "prisma/config";
 
 // Migrations need a direct (non-pooled) connection. Neon's Vercel integration
