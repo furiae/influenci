@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleUpload } from "@vercel/blob/client";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 
 /**
  * Token exchange for direct browser -> Vercel Blob uploads. The file never
@@ -14,13 +13,13 @@ export async function POST(request) {
       body,
       request,
       onBeforeGenerateToken: async (pathname) => {
-        const session = await getServerSession(authOptions);
-        if (!session?.user) throw new Error("Not authenticated");
+        const user = await requireUser();
+        if (!user) throw new Error("Not authenticated");
         return {
           allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
           maximumSizeInBytes: 20 * 1024 * 1024,
           addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ userId: session.user.id, pathname }),
+          tokenPayload: JSON.stringify({ userId: user.id, pathname }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {

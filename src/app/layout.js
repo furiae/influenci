@@ -1,4 +1,5 @@
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Providers } from "./providers";
 import Navbar from "../components/Navbar";
 import { Inter } from "next/font/google";
@@ -18,10 +19,18 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="h-full w-full" data-theme={theme}>
       <body className={`${inter.className} h-full w-full flex flex-col antialiased bg-bg-page text-primary-text overflow-hidden`}>
-        <Providers>
-          <Navbar />
-          <div className="flex-1 flex flex-col overflow-y-auto min-h-0">{children}</div>
-        </Providers>
+        <ClerkProvider
+          signInUrl="/login"
+          signUpUrl="/signup"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+          afterSignOutUrl="/login"
+        >
+          <Providers>
+            <Navbar />
+            <div className="flex-1 flex flex-col overflow-y-auto min-h-0">{children}</div>
+          </Providers>
+        </ClerkProvider>
       </body>
     </html>
   );

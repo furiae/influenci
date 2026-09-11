@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getProvider } from "@/lib/providers";
 
@@ -10,8 +9,8 @@ import { getProvider } from "@/lib/providers";
  */
 export async function POST(req) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const me = await requireUser();
+    if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
     const provider = getProvider(body.provider);
@@ -19,9 +18,9 @@ export async function POST(req) {
     const apiKey = String(body.apiKey || "").trim();
     if (apiKey.length < 8) return NextResponse.json({ error: "That key looks too short" }, { status: 400 });
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { apiKeys: true } });
+    const user = me;
     const apiKeys = { ...((user?.apiKeys && typeof user.apiKeys === "object") ? user.apiKeys : {}), [provider.id]: apiKey };
-    await prisma.user.update({ where: { id: session.user.id }, data: { apiKeys } });
+    await prisma.user.update({ where: { id: me.id }, data: { apiKeys } });
 
     return NextResponse.json({ success: true, hasKeys: Object.fromEntries(Object.keys(apiKeys).map((k) => [k, true])) });
   } catch (error) {
@@ -32,15 +31,15 @@ export async function POST(req) {
 
 export async function DELETE(req) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const me = await requireUser();
+    if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { apiKeys: true } });
+    const user = me;
     const apiKeys = { ...((user?.apiKeys && typeof user.apiKeys === "object") ? user.apiKeys : {}) };
     if (body.provider) delete apiKeys[body.provider];
     else for (const k of Object.keys(apiKeys)) delete apiKeys[k];
-    await prisma.user.update({ where: { id: session.user.id }, data: { apiKeys } });
+    await prisma.user.update({ where: { id: me.id }, data: { apiKeys } });
 
     return NextResponse.json({ success: true, hasKeys: Object.fromEntries(Object.keys(apiKeys).map((k) => [k, true])) });
   } catch (error) {

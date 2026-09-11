@@ -2,7 +2,7 @@
 
 AI influencer video studio at [app.influenci.ai](https://app.influenci.ai). Create reusable **AI actors** from a reference photo, then turn scripts into UGC-style clips: image-to-video, text-to-video, and talking-actor videos with a generated voice.
 
-Built on the MIT-licensed [Open AI UGC](https://github.com/Anil-matcha/Open-AI-UGC) studio (Next.js 16, Prisma, NextAuth) with a pluggable provider layer.
+Built on the MIT-licensed [Open AI UGC](https://github.com/Anil-matcha/Open-AI-UGC) studio (Next.js 16, Prisma) with Clerk auth and a pluggable provider layer.
 
 ## Providers
 
@@ -20,7 +20,7 @@ Users pay with credits (1 credit = $0.005) drawn from the server's keys, or brin
 
 - Next.js 16 App Router, React 19, Tailwind v4
 - Prisma 7 + Postgres (Neon via Vercel Marketplace)
-- NextAuth (Google)
+- Clerk for sign-in (email code, password, or social), via the Vercel Marketplace
 - Vercel Blob for uploads (direct browser uploads, no 4.5 MB limit)
 - Stripe credit packs (optional)
 

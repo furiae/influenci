@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const GENDERS = ["female", "male", "non-binary"];
 const AGES = ["18-24", "25-35", "36-50", "50+"];
 
 export async function GET(req, { params }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+  const user = await requireUser();
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const { id } = await params;
   const actor = await prisma.actor.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId: user.id },
     include: { creations: { orderBy: { createdAt: "desc" }, take: 24 } },
   });
   if (!actor) return new NextResponse("Not Found", { status: 404 });
@@ -20,8 +19,8 @@ export async function GET(req, { params }) {
 
 export async function PATCH(req, { params }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+    const user = await requireUser();
+    if (!user) return new NextResponse("Unauthorized", { status: 401 });
     const { id } = await params;
     const body = await req.json();
 
@@ -33,7 +32,7 @@ export async function PATCH(req, { params }) {
     if (body.notes !== undefined) data.notes = body.notes ? String(body.notes).trim().slice(0, 1000) : null;
     if (data.name === "") return NextResponse.json({ error: "Name cannot be empty" }, { status: 400 });
 
-    const { count } = await prisma.actor.updateMany({ where: { id, userId: session.user.id }, data });
+    const { count } = await prisma.actor.updateMany({ where: { id, userId: user.id }, data });
     if (!count) return new NextResponse("Not Found", { status: 404 });
     const actor = await prisma.actor.findUnique({ where: { id } });
     return NextResponse.json(actor);
@@ -44,10 +43,10 @@ export async function PATCH(req, { params }) {
 }
 
 export async function DELETE(req, { params }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+  const user = await requireUser();
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const { id } = await params;
-  const { count } = await prisma.actor.deleteMany({ where: { id, userId: session.user.id } });
+  const { count } = await prisma.actor.deleteMany({ where: { id, userId: user.id } });
   if (!count) return new NextResponse("Not Found", { status: 404 });
   return NextResponse.json({ success: true });
 }

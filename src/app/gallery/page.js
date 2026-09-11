@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiPlus, FiFilm, FiClock, FiAlertCircle, FiDownload, FiMaximize2, FiX, FiInfo, FiTrash2, FiRefreshCw } from "react-icons/fi";
 import { useEffect, useState } from "react";
@@ -10,15 +9,10 @@ import toast, { Toaster } from "react-hot-toast";
 const ACTIVE = ["processing", "pending", "starting", "queued"];
 
 export default function FinalVideos() {
-  const { status } = useSession();
   const router = useRouter();
   const [creations, setCreations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
-
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login?callbackUrl=/gallery");
-  }, [status, router]);
 
   const load = () =>
     fetch("/api/creations")
@@ -26,7 +20,7 @@ export default function FinalVideos() {
       .then((data) => setCreations(Array.isArray(data) ? data : []))
       .catch(() => toast.error("Could not load videos"))
       .finally(() => setLoading(false));
-  useEffect(() => { if (status === "authenticated") load(); }, [status]);
+  useEffect(() => { load(); }, []);
 
   // Refresh in-flight jobs (each GET also polls the provider server-side).
   useEffect(() => {
@@ -45,8 +39,6 @@ export default function FinalVideos() {
     if (res.ok) { setCreations((p) => p.filter((x) => x.id !== c.id)); setSelected(null); toast.success("Deleted"); }
     else toast.error("Delete failed");
   };
-
-  if (status !== "authenticated") return null;
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">

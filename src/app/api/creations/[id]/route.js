@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { findModel, getProvider, resolveApiKey, serverKeyFor } from "@/lib/providers";
 
@@ -10,12 +9,12 @@ const ACTIVE = ["processing", "pending", "starting", "queued"];
 
 export async function GET(req, { params }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+    const user = await requireUser();
+    if (!user) return new NextResponse("Unauthorized", { status: 401 });
 
     const { id } = await params;
     let creation = await prisma.creation.findFirst({
-      where: { id, userId: session.user.id },
+      where: { id, userId: user.id },
       include: { actor: { select: { id: true, name: true, imageUrl: true } } },
     });
     if (!creation) return new NextResponse("Not Found", { status: 404 });
@@ -29,8 +28,7 @@ export async function GET(req, { params }) {
           let apiKey = null;
           if (provider.envKey) {
             if (creation.keySource === "user") {
-              const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { apiKeys: true } });
-              apiKey = resolveApiKey(provider, user?.apiKeys).apiKey;
+              apiKey = resolveApiKey(provider, user.apiKeys).apiKey;
             } else {
               apiKey = serverKeyFor(provider);
             }
@@ -52,7 +50,7 @@ export async function GET(req, { params }) {
             });
             const spent = Number(creation.meta?.credits || 0);
             if (spent > 0) {
-              await prisma.user.update({ where: { id: session.user.id }, data: { credits: { increment: spent } } });
+              await prisma.user.update({ where: { id: user.id }, data: { credits: { increment: spent } } });
             }
           }
         } catch (pollErr) {
@@ -70,10 +68,10 @@ export async function GET(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+    const user = await requireUser();
+    if (!user) return new NextResponse("Unauthorized", { status: 401 });
     const { id } = await params;
-    const { count } = await prisma.creation.deleteMany({ where: { id, userId: session.user.id } });
+    const { count } = await prisma.creation.deleteMany({ where: { id, userId: user.id } });
     if (!count) return new NextResponse("Not Found", { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {

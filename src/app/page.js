@@ -1,8 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { upload } from "@vercel/blob/client";
@@ -13,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { FaCoins } from "react-icons/fa";
 import { estimateCredits, estimateSpeechSeconds } from "@/lib/credits";
+import { useMe } from "@/lib/useMe";
 
 const ACTIVE = ["processing", "pending", "starting", "queued"];
 const KIND_ICON = { i2v: FiVideo, t2v: FiType, lipsync: FiMic };
@@ -67,8 +67,7 @@ function Range({ label, value, min, max, unit = "", onChange }) {
 }
 
 function AdBuilder() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { me } = useMe();
   const searchParams = useSearchParams();
   const fileInputRef = useRef(null);
 
@@ -92,10 +91,6 @@ function AdBuilder() {
     setSettings(defaults);
   };
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login?callbackUrl=/");
-  }, [status, router]);
-
   // Model catalog
   useEffect(() => {
     fetch("/api/models")
@@ -111,7 +106,6 @@ function AdBuilder() {
 
   // Actors (+ preselect from ?actor=)
   useEffect(() => {
-    if (status !== "authenticated") return;
     fetch("/api/actors")
       .then((r) => r.json())
       .then((list) => {
@@ -123,7 +117,7 @@ function AdBuilder() {
         }
       })
       .catch(() => {});
-  }, [status, searchParams]);
+  }, [searchParams]);
 
   // Poll the latest job
   useEffect(() => {
@@ -145,7 +139,7 @@ function AdBuilder() {
     () => (catalog ? catalog.providers.flatMap((p) => p.models.map((m) => ({ ...m, providerLabel: p.label, configured: p.configured, allowUserKey: p.allowUserKey }))) : []),
     [catalog]
   );
-  const hasKeys = session?.user?.hasKeys || {};
+  const hasKeys = me?.hasKeys || {};
   const modelUsable = (m) => m.configured || hasKeys[m.provider];
   const cost = selectedModel && !hasKeys[selectedModel.provider] ? estimateCredits(selectedModel, settings, prompt) : 0;
   const needsImage = selectedModel && selectedModel.kind !== "t2v";
@@ -193,11 +187,9 @@ function AdBuilder() {
 
   const update = (k, v) => setSettings((s) => ({ ...s, [k]: v }));
 
-  if (status === "loading" || !catalog) {
+  if (!catalog) {
     return <div className="h-full w-full flex items-center justify-center"><FiLoader className="w-6 h-6 animate-spin text-muted" /></div>;
   }
-  if (status !== "authenticated") return null;
-
   const KindIcon = selectedModel ? KIND_ICON[selectedModel.kind] || FiVideo : FiVideo;
   const filteredModels = allModels.filter((m) => !modelSearch || `${m.name} ${m.providerLabel} ${m.description}`.toLowerCase().includes(modelSearch.toLowerCase()));
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,7 +11,6 @@ const GENDERS = ["female", "male", "non-binary"];
 const AGES = ["18-24", "25-35", "36-50", "50+"];
 
 export default function ActorsPage() {
-  const { status } = useSession();
   const router = useRouter();
   const [actors, setActors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,17 +18,13 @@ export default function ActorsPage() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login?callbackUrl=/actors");
-  }, [status, router]);
-
   const load = () =>
     fetch("/api/actors")
       .then((r) => r.json())
       .then((data) => setActors(Array.isArray(data) ? data : []))
       .catch(() => toast.error("Could not load actors"))
       .finally(() => setLoading(false));
-  useEffect(() => { if (status === "authenticated") load(); }, [status]);
+  useEffect(() => { load(); }, []);
 
   const onPickFile = async (e) => {
     const file = e.target.files?.[0];
@@ -77,8 +71,6 @@ export default function ActorsPage() {
     if (res.ok) { toast.success("Deleted"); setActors((a) => a.filter((x) => x.id !== actor.id)); }
     else toast.error("Delete failed");
   };
-
-  if (status !== "authenticated") return null;
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-12">

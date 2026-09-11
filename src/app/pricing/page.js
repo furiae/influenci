@@ -1,6 +1,6 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
 import Footer from "@/components/Footer";
 import { FaCheck, FaInfoCircle } from "react-icons/fa";
@@ -22,11 +22,11 @@ const PLANS = Object.values(config.stripe.plans).map((p) => ({
 }));
 
 export default function Pricing() {
-  const { status } = useSession();
+  const { isSignedIn } = useUser();
   const [loadingPlan, setLoadingPlan] = useState(null);
 
   const handleCheckout = async (planId) => {
-    if (status !== "authenticated") return toast.error("Sign in first to buy credits.");
+    if (!isSignedIn) return toast.error("Sign in first to buy credits.");
     setLoadingPlan(planId);
     try {
       const res = await fetch("/api/checkout", {

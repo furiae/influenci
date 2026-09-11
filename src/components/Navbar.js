@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { IoClose, IoMenu } from "react-icons/io5";
-import { FiLogOut, FiPlus, FiUser, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign } from "react-icons/fi";
+import { FiPlus, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign } from "react-icons/fi";
 import { FaCoins } from "react-icons/fa";
 import config from "@/lib/config";
+import { useMe } from "@/lib/useMe";
 import toast from "react-hot-toast";
 
 const NAV = [
@@ -18,10 +19,10 @@ const NAV = [
 ];
 
 export default function Navbar() {
-  const { data: session, status, update: updateSession } = useSession();
+  const { isLoaded, isSignedIn } = useUser();
+  const { me, refresh } = useMe();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
   const [providers, setProviders] = useState([]);
   const [keyProvider, setKeyProvider] = useState("wavespeed");
@@ -29,7 +30,7 @@ export default function Navbar() {
   const [saving, setSaving] = useState(false);
 
   const appName = config.appName;
-  const hasKeys = session?.user?.hasKeys || {};
+  const hasKeys = me?.hasKeys || {};
   const anyKey = Object.keys(hasKeys).length > 0;
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Navbar() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save key");
-      await updateSession();
+      await refresh();
       toast.success("Key saved. Generations with this provider are now free of credits.");
       setKeyInput("");
       setIsKeyModalOpen(false);
@@ -73,7 +74,7 @@ export default function Navbar() {
         body: JSON.stringify({ provider }),
       });
       if (!res.ok) throw new Error("Failed to remove key");
-      await updateSession();
+      await refresh();
       toast.success("Key removed");
     } catch (err) {
       toast.error(err.message);
@@ -103,6 +104,20 @@ export default function Navbar() {
       );
     });
 
+  const keyButton = (mobile) => (
+    <button
+      onClick={() => { setIsOpen(false); setIsKeyModalOpen(true); }}
+      className={
+        mobile
+          ? "flex w-full items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs font-bold text-amber-600"
+          : `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${anyKey ? "bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20" : "bg-bg-page/50 border-divider text-secondary-text hover:text-primary-text hover:border-primary/40"}`
+      }
+    >
+      <FiKey />
+      <span>{anyKey ? "Your API keys" : "Use your own key"}</span>
+    </button>
+  );
+
   return (
     <header className="sticky top-0 z-50 w-full glass-panel border-b border-divider/50 shadow-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
@@ -113,76 +128,38 @@ export default function Navbar() {
           <span className="text-lg font-black tracking-tight text-primary-text text-nowrap">{appName}</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          {renderLinks(false)}
-        </nav>
+        <nav className="hidden md:flex items-center gap-6">{renderLinks(false)}</nav>
 
         <div className="hidden md:flex items-center gap-3">
-          {status === "authenticated" ? (
+          {isLoaded && isSignedIn ? (
             <>
-              <button
-                onClick={() => setIsKeyModalOpen(true)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
-                  anyKey
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-600 hover:bg-amber-500/20"
-                    : "bg-bg-page/50 border-divider text-secondary-text hover:text-primary-text hover:border-primary/40"
-                }`}
-              >
-                <FiKey />
-                <span>{anyKey ? "Your API keys" : "Use your own key"}</span>
-              </button>
-
-              <div className="flex items-center">
-                <div className="flex items-center h-9 border border-divider rounded-l bg-bg-page/30 overflow-hidden pr-2">
-                  <span className="font-bold text-[13px] px-3 flex items-center text-primary-text gap-1.5">
-                    <FaCoins className="text-yellow-500 text-xs" />
-                    {session.user.credits ?? 0}
-                  </span>
-                  <Link href="/pricing" className="flex items-center justify-center w-5 h-5 rounded hover:bg-bg-card text-secondary-text transition-colors" title="Buy credits">
-                    <FiPlus size={14} />
-                  </Link>
-                </div>
-                <div className="relative">
-                  <button
-                    onClick={() => setIsProfileOpen(!isProfileOpen)}
-                    onBlur={() => setTimeout(() => setIsProfileOpen(false), 200)}
-                    className="h-9 w-9 flex items-center justify-center border-y border-r border-divider rounded-r bg-bg-page/30 hover:bg-bg-page transition-colors cursor-pointer"
-                  >
-                    {session.user.image ? (
-                      <img src={session.user.image} alt="" className="h-6 w-6 rounded-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <FiUser className="text-secondary-text" size={16} />
-                    )}
-                  </button>
-                  {isProfileOpen && (
-                    <div className="absolute right-0 top-11 w-52 rounded border border-divider bg-bg-card p-1 shadow-lg z-[100] animate-scale-up">
-                      <div className="px-3 py-2 text-xs text-secondary-text border-b border-divider/50 mb-1 truncate">{session.user.email}</div>
-                      <button
-                        onClick={() => signOut({ callbackUrl: "/login" })}
-                        className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs font-semibold text-red-500 hover:bg-red-500/10 transition-colors"
-                      >
-                        <FiLogOut size={14} />
-                        <span>Sign out</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+              {keyButton(false)}
+              <div className="flex items-center h-9 border border-divider rounded bg-bg-page/30 overflow-hidden pr-2">
+                <span className="font-bold text-[13px] px-3 flex items-center text-primary-text gap-1.5">
+                  <FaCoins className="text-yellow-500 text-xs" />
+                  {me?.credits ?? "…"}
+                </span>
+                <Link href="/pricing" className="flex items-center justify-center w-5 h-5 rounded hover:bg-bg-card text-secondary-text transition-colors" title="Buy credits">
+                  <FiPlus size={14} />
+                </Link>
               </div>
+              <UserButton />
             </>
-          ) : (
+          ) : isLoaded ? (
             <Link href="/login" className="bg-primary text-white px-5 py-1.5 rounded-full text-sm font-bold hover:bg-primary-hover transition-all shadow-md shadow-primary/20">
               Sign in
             </Link>
-          )}
+          ) : null}
         </div>
 
         <div className="flex md:hidden items-center gap-2">
-          {status === "authenticated" && (
+          {isSignedIn && (
             <div className="flex items-center h-8 border border-divider rounded bg-bg-page/30 px-2.5 text-xs font-bold text-primary-text gap-1">
               <FaCoins className="text-yellow-500 text-[10px]" />
-              {session.user.credits ?? 0}
+              {me?.credits ?? "…"}
             </div>
           )}
+          {isSignedIn && <UserButton />}
           <button onClick={() => setIsOpen(!isOpen)} className="hover:bg-bg-card p-2 rounded cursor-pointer transition-colors text-primary-text border border-divider/50" aria-label="Toggle menu">
             {isOpen ? <IoClose size={20} /> : <IoMenu size={20} />}
           </button>
@@ -193,22 +170,7 @@ export default function Navbar() {
         <div className="absolute top-full left-0 right-0 z-[200] glass-dropdown border-b border-divider shadow-2xl py-4 px-6 md:hidden animate-fade-in">
           <nav className="flex flex-col gap-3">
             {renderLinks(true)}
-            {status === "authenticated" ? (
-              <>
-                <button
-                  onClick={() => { setIsOpen(false); setIsKeyModalOpen(true); }}
-                  className="flex w-full items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs font-bold text-amber-600"
-                >
-                  <FiKey /> <span>{anyKey ? "Your API keys" : "Use your own key"}</span>
-                </button>
-                <button
-                  onClick={() => { setIsOpen(false); signOut({ callbackUrl: "/login" }); }}
-                  className="flex w-full items-center justify-center gap-2 rounded bg-red-500/10 text-red-500 py-3 text-sm font-bold border border-red-500/20 mt-2"
-                >
-                  <FiLogOut size={16} /> <span>Sign out</span>
-                </button>
-              </>
-            ) : (
+            {isSignedIn ? keyButton(true) : (
               <Link href="/login" onClick={() => setIsOpen(false)} className="flex w-full items-center justify-center rounded bg-primary text-white py-3 text-sm font-bold mt-2">
                 Sign in
               </Link>
@@ -256,11 +218,7 @@ export default function Navbar() {
 
             <form onSubmit={saveKey} className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <select
-                  value={keyProvider}
-                  onChange={(e) => setKeyProvider(e.target.value)}
-                  className="col-span-1 bg-bg-page border border-divider rounded-lg px-2 py-2.5 text-xs"
-                >
+                <select value={keyProvider} onChange={(e) => setKeyProvider(e.target.value)} className="col-span-1 bg-bg-page border border-divider rounded-lg px-2 py-2.5 text-xs">
                   {(providers.length ? providers : [{ id: "wavespeed", label: "Wavespeed" }, { id: "muapi", label: "MUAPI" }]).map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
@@ -277,11 +235,7 @@ export default function Navbar() {
                 <button type="button" onClick={() => setIsKeyModalOpen(false)} className="px-4 py-2 rounded-lg bg-bg-page border border-divider text-xs font-semibold text-secondary-text cursor-pointer">
                   Close
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving || !keyInput.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
-                >
+                <button type="submit" disabled={saving || !keyInput.trim()} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all disabled:opacity-50 cursor-pointer">
                   <FiCheck /> <span>{saving ? "Saving…" : "Save key"}</span>
                 </button>
               </div>

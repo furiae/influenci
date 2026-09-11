@@ -2,7 +2,7 @@
   "name": "influenci",
   "version": "0.1.0",
   "private": true,
-  "description": "Influenci \u2014 AI influencer video studio: reusable AI actors, image-to-video and talking-actor UGC clips. Based on Open AI UGC.",
+  "description": "Influenci — AI influencer video studio: reusable AI actors, image-to-video and talking-actor UGC clips. Based on Open AI UGC.",
   "keywords": [
     "ai-influencer",
     "ai-ugc",
@@ -24,7 +24,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@next-auth/prisma-adapter": "^1.0.7",
+    "@clerk/nextjs": "^7.9.2",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@stripe/stripe-js": "^9.2.0",
@@ -34,7 +34,6 @@
     "framer-motion": "^12.38.0",
     "msedge-tts": "^2.0.7",
     "next": "16.2.3",
-    "next-auth": "^4.24.13",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
