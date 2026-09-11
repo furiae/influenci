@@ -1,49 +1,36 @@
 import { NextResponse } from "next/server";
+import { handleUpload } from "@vercel/blob/client";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-export async function POST(req) {
+/**
+ * Token exchange for direct browser -> Vercel Blob uploads. The file never
+ * passes through this function, so the 4.5 MB request cap does not apply.
+ */
+export async function POST(request) {
+  const body = await request.json();
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const formData = await req.formData();
-    const file = formData.get("file");
-
-    if (!file) {
-      return new NextResponse("No file provided", { status: 400 });
-    }
-
-    const apiKey = process.env.UGC_API_KEY;
-    if (!apiKey) {
-      return new NextResponse("API Key not configured", { status: 500 });
-    }
-
-    // Prepare for MuAPI
-    const muapiFormData = new FormData();
-    muapiFormData.append("file", file);
-
-    const response = await fetch("https://api.muapi.ai/api/v1/upload_file", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        const session = await getServerSession(authOptions);
+        if (!session?.user) throw new Error("Not authenticated");
+        return {
+          allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
+          maximumSizeInBytes: 20 * 1024 * 1024,
+          addRandomSuffix: true,
+          tokenPayload: JSON.stringify({ userId: session.user.id, pathname }),
+        };
       },
-      body: muapiFormData,
+      onUploadCompleted: async ({ blob, tokenPayload }) => {
+        // Nothing to persist here: the browser hands the blob URL to the
+        // actor or generation request that needs it.
+        console.log("[BLOB_UPLOADED]", blob.pathname, tokenPayload);
+      },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`MuAPI Upload Failed: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    // Expected response format: { url: "...", file_id: "..." }
-    return NextResponse.json(data);
+    return NextResponse.json(jsonResponse);
   } catch (error) {
-    console.error("[UPLOAD_ERROR]", error);
-    return new NextResponse(error.message || "Internal Error", { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

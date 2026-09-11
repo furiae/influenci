@@ -1,5 +1,5 @@
 generator client {
-  provider      = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -7,18 +7,18 @@ datasource db {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -39,35 +39,68 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  credits       Int       @default(10)
-  customApiKey  String?   @db.Text
+  credits       Int       @default(100)
+  /// Per-provider API keys the user brings themselves, e.g. { "wavespeed": "...", "muapi": "..." }
+  apiKeys       Json?
   accounts      Account[]
   sessions      Session[]
   creations     Creation[]
+  actors        Actor[]
+}
+
+/// A saved, reusable AI actor (reference face) owned by a user.
+model Actor {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  imageUrl    String   @db.Text
+  gender      String?
+  ageRange    String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creations Creation[]
+
+  @@index([userId])
 }
 
 model Creation {
-  id           String   @id @default(cuid())
-  type         String?  // video or image
-  title        String?
-  prompt       String?  @db.Text
-  url          String?  @db.Text
-  createdAt    DateTime @default(now())
-  userId       String
-  
-  requestId    String?  @unique
-  status       String   @default("processing")
-  error        String?  @db.Text
+  id        String   @id @default(cuid())
+  type      String?  // video or image
+  title     String?
+  prompt    String?  @db.Text
+  url       String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+
+  /// Which adapter produced this: wavespeed | muapi | zerogpu
+  provider  String   @default("wavespeed")
+  requestId String?
+  /// "server" when Chris's key paid for it, "user" when the user's own key did
+  keySource String   @default("server")
+  status    String   @default("processing")
+  error     String?  @db.Text
 
   // Generation parameters
-  modelId      String?
-  aspectRatio  String?
-  resolution   String?
-  duration     Int?
-  mode         String?
-  inputImages  String?  @db.Text
-  
+  modelId     String?
+  aspectRatio String?
+  resolution  String?
+  duration    Int?
+  mode        String?
+  inputImages String[] @default([])
+  /// Provider-specific scratch data (audio URL, pipeline step, etc.)
+  meta        Json?
+
+  actorId String?
+  actor   Actor?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, requestId])
+  @@index([userId, createdAt])
 }
 
 model VerificationToken {

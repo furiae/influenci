@@ -2,19 +2,29 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
+// Memoize on globalThis in every environment. On Vercel, one function instance
+// serves many requests (Fluid Compute) and a fresh Pool per module evaluation
+// would exhaust Postgres connections.
 const globalForPrisma = globalThis;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
+function createPool() {
+  return new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+  });
+}
+
+const pool = globalForPrisma.__pgPool ?? createPool();
+globalForPrisma.__pgPool = pool;
 
 export const prisma =
-  globalForPrisma.prisma ||
+  globalForPrisma.__prisma ??
   new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    adapter: new PrismaPg(pool),
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.__prisma = prisma;
 
 export default prisma;
-
