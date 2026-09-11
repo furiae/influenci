@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { actingUser } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 import { planActorDay } from "@/lib/scheduler/planner";
 import { todayIn, addDays } from "@/lib/time";
@@ -9,7 +9,7 @@ export const maxDuration = 120;
 /** POST { date?: "YYYY-MM-DD", videosPerDay? } → plan that day (default tomorrow) and start renders. */
 export async function POST(req, { params }) {
   try {
-    const user = await requireUser();
+    const user = await actingUser(req);
     if (!user) return new NextResponse("Unauthorized", { status: 401 });
     const { id } = await params;
     const actor = await prisma.actor.findFirst({ where: { id, userId: user.id } });

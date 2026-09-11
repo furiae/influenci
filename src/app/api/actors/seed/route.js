@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { authorizeOps } from "@/lib/ops-auth";
+import { actingUser } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_PERSONAS } from "@/lib/personas/defaults";
 import { mergeBible } from "@/lib/personas/bible";
 
 /** Create the 7 launch personas for the acting user (idempotent by slug). */
 export async function POST(req) {
-  let user = await requireUser();
-  if (!user) {
-    const authz = await authorizeOps(req);
-    if (!authz.ok || !authz.user) return new NextResponse("Unauthorized", { status: 401 });
-    user = authz.user;
-  }
+  const user = await actingUser(req);
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const created = [];
   const existing = [];
   for (const p of DEFAULT_PERSONAS) {

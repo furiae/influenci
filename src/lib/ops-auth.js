@@ -22,3 +22,12 @@ export async function authorizeOps(req) {
   if (owner) return { ok: true, via: "owner", user: owner };
   return { ok: false };
 }
+
+/** Session user if signed in, otherwise the owner when OPS_SECRET is presented. */
+export async function actingUser(req) {
+  const { requireUser } = await import("@/lib/auth");
+  const user = await requireUser();
+  if (user) return user;
+  const authz = await authorizeOps(req);
+  return authz.ok ? authz.user || null : null;
+}

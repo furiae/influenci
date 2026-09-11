@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { start } from "workflow/api";
-import { requireUser } from "@/lib/auth";
+import { actingUser } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 import { trainIdentityWorkflow } from "@/workflows/train-identity";
 import { generateKeyframe } from "@/lib/identity/keyframe";
@@ -20,7 +20,7 @@ export const maxDuration = 300;
  */
 export async function POST(req, { params }) {
   try {
-    const user = await requireUser();
+    const user = await actingUser(req);
     if (!user) return new NextResponse("Unauthorized", { status: 401 });
     const { id } = await params;
     const actor = await prisma.actor.findFirst({ where: { id, userId: user.id } });
