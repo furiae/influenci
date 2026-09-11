@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getProvider } from "@/lib/providers";
+import { encrypt } from "@/lib/crypto";
 
 /**
  * Bring-your-own-key management. Keys are stored server-side only; the
@@ -19,7 +20,7 @@ export async function POST(req) {
     if (apiKey.length < 8) return NextResponse.json({ error: "That key looks too short" }, { status: 400 });
 
     const user = me;
-    const apiKeys = { ...((user?.apiKeys && typeof user.apiKeys === "object") ? user.apiKeys : {}), [provider.id]: apiKey };
+    const apiKeys = { ...((user?.apiKeys && typeof user.apiKeys === "object") ? user.apiKeys : {}), [provider.id]: encrypt(apiKey) };
     await prisma.user.update({ where: { id: me.id }, data: { apiKeys } });
 
     return NextResponse.json({ success: true, hasKeys: Object.fromEntries(Object.keys(apiKeys).map((k) => [k, true])) });

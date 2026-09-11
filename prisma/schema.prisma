@@ -8,38 +8,199 @@ datasource db {
 
 /// One row per signed-in person. `id` is the Clerk user id.
 model User {
-  id            String    @id
-  name          String?
-  email         String?   @unique
-  image         String?
-  credits       Int       @default(100)
-  /// Per-provider API keys the user brings themselves, e.g. { "wavespeed": "...", "muapi": "..." }
-  apiKeys       Json?
-  creations     Creation[]
-  actors        Actor[]
+  id        String  @id
+  name      String?
+  email     String? @unique
+  image     String?
+  credits   Int     @default(100)
+  /// "owner" unlocks platform settings and manual scheduler triggers
+  role      String  @default("member")
+  /// Per-provider API keys the user brings themselves (values encrypted), e.g. { "wavespeed": "v1...." }
+  apiKeys   Json?
+  creations Creation[]
+  actors    Actor[]
+  posts     Post[]
 }
 
-/// A saved, reusable AI actor (reference face) owned by a user.
+/// A recurring AI persona: reference look, bible, cadence, connected channels.
 model Actor {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String
-  imageUrl    String   @db.Text
-  gender      String?
-  ageRange    String?
-  notes       String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  slug      String?
+  kind      String   @default("human") // human | pet
+  active    Boolean  @default(true)
+  imageUrl  String   @db.Text // canonical frontal / hero image
+  gender    String?
+  ageRange  String?
+  notes     String?  @db.Text
+  timezone  String   @default("America/New_York")
+
+  // Persona
+  bible           Json?
+  canonicalPrompt String? @db.Text
+  negativePrompt  String? @db.Text
+
+  // Identity assets
+  referenceImages String[] @default([])
+  datasetZipUrl   String?  @db.Text
+  loraUrl         String?  @db.Text
+  loraTriggerWord String?
+  klingElementId  String?
+  identityStatus  String   @default("none") // none | generating_refs | training | ready | failed
+  identityError   String?  @db.Text
+  identityJobId   String?
+
+  // Scheduling
+  autoPublish  Boolean @default(false)
+  videosPerDay Int     @default(1)
+  defaultClip  Json? // { lengthSec: 5|10, audio: true, mediaType: "video"|"image" }
+  cadence      Json? // { window:{start,end}, minSpacingMinutes, platforms:{ tiktok:{perDay}, ... } }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   creations Creation[]
+  channels  Channel[]
+  posts     Post[]
 
+  @@unique([userId, slug])
   @@index([userId])
 }
 
+/// A connected social account for one actor on one platform.
+model Channel {
+  id               String    @id @default(cuid())
+  actorId          String
+  platform         String // instagram | facebook | tiktok | youtube | pinterest | x
+  externalId       String
+  handle           String?
+  displayName      String?
+  avatarUrl        String?   @db.Text
+  accessTokenEnc   String    @db.Text
+  refreshTokenEnc  String?   @db.Text
+  tokenExpiresAt   DateTime?
+  refreshExpiresAt DateTime?
+  scopes           String[]  @default([])
+  status           String    @default("connected") // connected | expiring | expired | revoked | error | disconnected
+  lastError        String?   @db.Text
+  lastCheckedAt    DateTime?
+  lastPublishedAt  DateTime?
+  config           Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  actor   Actor        @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  targets PostTarget[]
+
+  @@unique([actorId, platform])
+  @@index([platform, status])
+}
+
+/// One piece of content for an actor: idea → script → keyframe → clip or still.
+model Post {
+  id            String    @id @default(cuid())
+  actorId       String
+  userId        String
+  planDate      String // "YYYY-MM-DD" in the actor's timezone
+  sequence      Int       @default(0)
+  mediaType     String    @default("video") // video | image
+  clipLengthSec Int       @default(5)
+  status        String    @default("planned") // planned | rendering | draft | approved | publishing | published | partial | failed | cancelled
+  idea          String?   @db.Text
+  pillar        String?
+  hook          String?   @db.Text
+  script        Json?
+  keyframeUrl   String?   @db.Text
+  keyframeQa    Json?
+  creationId    String?   @unique
+  videoUrl      String?   @db.Text
+  videoMeta     Json?
+  renderRunId   String?
+  renderError   String?   @db.Text
+  costCents     Int       @default(0)
+  approvedAt    DateTime?
+  approvedBy    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  actor    Actor           @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creation Creation?       @relation(fields: [creationId], references: [id], onDelete: SetNull)
+  targets  PostTarget[]
+  events   PipelineEvent[]
+
+  @@unique([actorId, planDate, sequence])
+  @@index([userId, planDate])
+  @@index([status])
+}
+
+/// The per-platform variant of a Post and its publish result.
+model PostTarget {
+  id            String    @id @default(cuid())
+  postId        String
+  platform      String
+  slotIndex     Int       @default(0)
+  channelId     String?
+  caption       String?   @db.Text
+  title         String?
+  hashtags      String[]  @default([])
+  settings      Json?
+  scheduledAt   DateTime
+  status        String    @default("pending") // pending | queued | publishing | published | failed | skipped | cancelled
+  attempts      Int       @default(0)
+  lockedAt      DateTime?
+  publishRunId  String?
+  providerState Json?
+  externalId    String?
+  url           String?   @db.Text
+  error         String?   @db.Text
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  channel Channel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+
+  @@unique([postId, platform, slotIndex])
+  @@index([status, scheduledAt])
+  @@index([channelId, publishedAt])
+}
+
+/// Developer-app credentials per platform (meta serves instagram + facebook).
+model PlatformApp {
+  platform        String   @id // meta | tiktok | youtube | pinterest | x
+  clientId        String
+  clientSecretEnc String   @db.Text
+  extra           Json?
+  reviewStatus    Json?
+  updatedAt       DateTime @updatedAt
+}
+
+/// Pipeline log and cost ledger.
+model PipelineEvent {
+  id        String   @id @default(cuid())
+  postId    String?
+  actorId   String?
+  kind      String // render | publish | identity | plan | scheduler
+  step      String
+  status    String // ok | retry | failed
+  message   String?  @db.Text
+  costCents Int      @default(0)
+  data      Json?
+  createdAt DateTime @default(now())
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+/// A rendered asset (Ad Builder output or a Post's video).
 model Creation {
   id        String   @id @default(cuid())
-  type      String?  // video or image
+  type      String? // video or image
   title     String?
   prompt    String?  @db.Text
   url       String?  @db.Text
@@ -67,6 +228,7 @@ model Creation {
 
   actorId String?
   actor   Actor?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  post    Post?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -1,4 +1,5 @@
 import { estimateCredits } from "../credits.js";
+import { decrypt, isEncrypted } from "../crypto.js";
 export { estimateCredits };
 import wavespeed from "./wavespeed.js";
 import muapi from "./muapi.js";
@@ -64,7 +65,10 @@ export function providerConfigured(provider) {
  * (credit-wise) for them.
  */
 export function resolveApiKey(provider, userKeys) {
-  const userKey = provider.allowUserKey && userKeys && typeof userKeys === "object" ? userKeys[provider.id] : null;
+  let userKey = provider.allowUserKey && userKeys && typeof userKeys === "object" ? userKeys[provider.id] : null;
+  if (userKey && isEncrypted(userKey)) {
+    try { userKey = decrypt(userKey); } catch { userKey = null; }
+  }
   if (userKey && String(userKey).trim()) return { apiKey: String(userKey).trim(), keySource: "user" };
   const serverKey = serverKeyFor(provider);
   if (serverKey) return { apiKey: serverKey, keySource: "server" };
