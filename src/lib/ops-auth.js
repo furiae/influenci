@@ -14,7 +14,12 @@ export async function authorizeOps(req) {
     const given = Buffer.from(header.slice(7));
     const want = Buffer.from(secret);
     if (given.length === want.length && timingSafeEqual(given, want)) {
-      const user = await prisma.user.findFirst({ where: { role: "owner" } });
+      const ownerEmail = (process.env.OWNER_EMAIL || "").trim().toLowerCase();
+      let user = await prisma.user.findFirst({ where: { role: "owner" } });
+      if (!user && ownerEmail) {
+        user = await prisma.user.findFirst({ where: { email: { equals: ownerEmail, mode: "insensitive" } } });
+        if (user && user.role !== "owner") user = await prisma.user.update({ where: { id: user.id }, data: { role: "owner" } });
+      }
       return { ok: true, via: "secret", user };
     }
   }
