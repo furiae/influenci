@@ -1,26 +1,20 @@
 {
-  "name": "open-ai-ugc",
+  "name": "influenci",
   "version": "0.1.0",
   "private": true,
-  "description": "Open AI UGC — an open-source alternative to Arcads and MakeUGC for generating AI UGC video ads with realistic actors, scripts, and voiceovers.",
+  "description": "Influenci \u2014 AI influencer video studio: reusable AI actors, image-to-video and talking-actor UGC clips. Based on Open AI UGC.",
   "keywords": [
+    "ai-influencer",
     "ai-ugc",
-    "ugc-ads",
     "ai-actors",
-    "ai-video-ads",
-    "arcads-alternative",
-    "makeugc-alternative",
-    "user-generated-content",
-    "ai-video-generation",
-    "text-to-video",
+    "ai-video",
+    "talking-avatar",
     "image-to-video",
-    "veo-3",
-    "seedance",
-    "grok-video",
-    "muapi",
+    "text-to-video",
     "nextjs",
-    "stripe",
-    "saas-template"
+    "wavespeed",
+    "huggingface",
+    "zerogpu"
   ],
   "scripts": {
     "dev": "next dev",
@@ -34,18 +28,20 @@
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "@stripe/stripe-js": "^9.2.0",
+    "@vercel/blob": "^2.8.0",
+    "axios": "^1.16.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
+    "msedge-tts": "^2.0.7",
     "next": "16.2.3",
     "next-auth": "^4.24.13",
     "pg": "^8.20.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-hot-toast": "^2.5.2",
     "react-icons": "^5.6.0",
     "stripe": "^22.0.1",
-    "tailwind-merge": "^3.5.0",
-    "axios": "^1.16.1",
-    "react-hot-toast": "^2.5.2"
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -54,5 +50,8 @@
     "eslint-config-next": "16.2.3",
     "prisma": "^7.7.0",
     "tailwindcss": "^4"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }
