@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaGoogle } from "react-icons/fa";
 import { FiVideo, FiUsers, FiMic } from "react-icons/fi";
@@ -13,9 +13,18 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const next = searchParams.get("callbackUrl") || searchParams.get("next") || "/";
 
+  const [googleReady, setGoogleReady] = useState(null); // null = checking
+
   useEffect(() => {
     if (status === "authenticated") router.push(next);
   }, [status, router, next]);
+
+  useEffect(() => {
+    fetch("/api/auth/providers")
+      .then((r) => r.json())
+      .then((p) => setGoogleReady(Boolean(p && p.google)))
+      .catch(() => setGoogleReady(false));
+  }, []);
 
   return (
     <div className="min-h-full flex items-center justify-center bg-bg-page px-6 py-12 text-primary-text">
@@ -34,13 +43,20 @@ function LoginContent() {
           <li className="rounded-lg border border-divider/60 bg-bg-page/60 p-3 space-y-1"><FiMic className="mx-auto text-primary" /> <span>Talking scripts</span></li>
         </ul>
 
-        <button
-          onClick={() => signIn("google", { callbackUrl: next })}
-          className="w-full py-3.5 bg-white text-neutral-900 border border-divider rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-neutral-50 transition-all shadow-md active:scale-[0.98] cursor-pointer"
-        >
-          <FaGoogle className="text-red-500" />
-          <span>Continue with Google</span>
-        </button>
+        {googleReady === false ? (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-700 leading-relaxed">
+            <strong>Google sign-in isn&apos;t configured yet.</strong> Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> to the Vercel project and redeploy.
+          </div>
+        ) : (
+          <button
+            onClick={() => signIn("google", { callbackUrl: next })}
+            disabled={googleReady === null}
+            className="w-full py-3.5 bg-white text-neutral-900 border border-divider rounded-full text-sm font-bold flex items-center justify-center gap-3 hover:bg-neutral-50 transition-all shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-60"
+          >
+            <FaGoogle className="text-red-500" />
+            <span>Continue with Google</span>
+          </button>
+        )}
 
         <p className="text-[11px] text-center text-secondary-text leading-relaxed">
           New accounts start with {" "}
