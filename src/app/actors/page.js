@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { upload } from "@vercel/blob/client";
 import toast, { Toaster } from "react-hot-toast";
-import { FiPlus, FiX, FiUpload, FiLoader, FiTrash2, FiVideo, FiUsers, FiEdit2 } from "react-icons/fi";
+import Link from "next/link";
+import { FiPlus, FiX, FiUpload, FiLoader, FiTrash2, FiVideo, FiUsers, FiEdit2, FiZap, FiSettings } from "react-icons/fi";
 
 const GENDERS = ["female", "male", "non-binary"];
 const AGES = ["18-24", "25-35", "36-50", "50+"];
@@ -16,7 +17,23 @@ export default function ActorsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null | {} (new) | actor
   const [busy, setBusy] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const fileRef = useRef(null);
+
+  const seed = async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/actors/seed", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      toast.success(d.created.length ? `Created ${d.created.length} personas` : "Personas already exist");
+      load();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const load = () =>
     fetch("/api/actors")
@@ -83,9 +100,14 @@ export default function ActorsPage() {
             Save a reference photo once and reuse the same face across every ad. Upload a photo of a consenting person, a licensed stock face, or an AI-generated portrait.
           </p>
         </div>
-        <button onClick={() => setEditing({ name: "", imageUrl: "", gender: "female", ageRange: "25-35", notes: "" })} className="flex items-center gap-2 px-5 py-3 rounded-full bg-primary text-white font-bold text-sm shadow-xl shadow-primary/20 hover:bg-primary-hover">
-          <FiPlus /> New actor
-        </button>
+        <div className="flex gap-2">
+          <button onClick={seed} disabled={seeding} className="flex items-center gap-2 px-4 py-3 rounded-full border border-divider text-sm font-bold text-muted hover:text-foreground disabled:opacity-50">
+            {seeding ? <FiLoader className="animate-spin" /> : <FiZap />} Seed the 7 personas
+          </button>
+          <button onClick={() => setEditing({ name: "", imageUrl: "", gender: "female", ageRange: "25-35", notes: "" })} className="flex items-center gap-2 px-5 py-3 rounded-full bg-primary text-white font-bold text-sm shadow-xl shadow-primary/20 hover:bg-primary-hover">
+            <FiPlus /> New actor
+          </button>
+        </div>
       </header>
 
       <div className="max-w-7xl mx-auto">
@@ -106,15 +128,17 @@ export default function ActorsPage() {
               {actors.map((a, i) => (
                 <motion.div key={a.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="group rounded-xl overflow-hidden bg-bg-card border border-divider shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
                   <div className="aspect-[3/4] bg-glass-hover relative">
-                    <img src={a.imageUrl} alt={a.name} className="w-full h-full object-cover" />
+                    {a.imageUrl ? <img src={a.imageUrl} alt={a.name} className="w-full h-full object-cover" /> : <Link href={`/actors/${a.id}?tab=identity`} className="absolute inset-0 flex flex-col items-center justify-center text-muted text-xs gap-2"><FiUpload className="text-2xl" /> Add a reference photo</Link>}
+                    {a.identityStatus && a.identityStatus !== "none" && <span className={`absolute top-2 left-2 text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${a.identityStatus === "ready" ? "bg-emerald-500 text-white" : a.identityStatus === "failed" ? "bg-rose-500 text-white" : "bg-amber-400 text-black"}`}>{a.identityStatus === "ready" ? "identity locked" : a.identityStatus}</span>}
                     <div className="absolute inset-x-0 bottom-0 p-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/70 to-transparent">
                       <button onClick={() => router.push(`/?actor=${a.id}`)} className="flex-1 flex items-center justify-center gap-1 text-[11px] font-bold py-2 rounded-full bg-primary text-white"><FiVideo /> Use in ad</button>
-                      <button onClick={() => setEditing(a)} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center" title="Edit"><FiEdit2 size={12} /></button>
+                      <Link href={`/actors/${a.id}`} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center" title="Open"><FiSettings size={12} /></Link>
+                      <button onClick={() => setEditing(a)} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center" title="Quick edit"><FiEdit2 size={12} /></button>
                       <button onClick={() => remove(a)} className="w-8 h-8 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center hover:bg-rose-500" title="Delete"><FiTrash2 size={12} /></button>
                     </div>
                   </div>
                   <div className="p-3">
-                    <div className="text-sm font-bold text-foreground truncate">{a.name}</div>
+                    <Link href={`/actors/${a.id}`} className="text-sm font-bold text-foreground truncate hover:text-primary block">{a.name}</Link>
                     <div className="text-[11px] text-muted">{[a.gender, a.ageRange].filter(Boolean).join(" · ") || "Actor"}{a._count?.creations ? ` · ${a._count.creations} video${a._count.creations === 1 ? "" : "s"}` : ""}</div>
                   </div>
                 </motion.div>

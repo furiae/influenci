@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { IoClose, IoMenu } from "react-icons/io5";
-import { FiPlus, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign, FiSettings } from "react-icons/fi";
+import { FiPlus, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign, FiSettings, FiCalendar } from "react-icons/fi";
 import { FaCoins } from "react-icons/fa";
 import config from "@/lib/config";
 import { useMe } from "@/lib/useMe";
@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 const NAV = [
   { name: "Ad Builder", path: "/", icon: FiVideo },
   { name: "AI Actors", path: "/actors", icon: FiUsers },
+  { name: "Calendar", path: "/calendar", icon: FiCalendar },
   { name: "Final Videos", path: "/gallery", icon: FiFilm },
   { name: "Pricing", path: "/pricing", icon: FiDollarSign },
   { name: "Settings", path: "/settings/keys", icon: FiSettings },
@@ -86,7 +87,7 @@ export default function Navbar() {
 
   const renderLinks = (mobile) =>
     NAV.map((link) => {
-      const active = pathname === link.path || (link.path.startsWith("/settings") && pathname?.startsWith("/settings"));
+      const active = pathname === link.path || (link.path !== "/" && pathname?.startsWith(link.path.split("/").slice(0, 2).join("/")));
       return (
         <Link
           key={link.path}
