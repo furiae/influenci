@@ -1,4 +1,4 @@
-import { synthesizeToBlob, DEFAULT_VOICE, VOICES } from "@/lib/tts";
+import { synthesizeToBlob, DEFAULT_VOICE, VOICES } from "../tts.js";
 
 /**
  * Free provider: public Hugging Face Spaces running on ZeroGPU, called through

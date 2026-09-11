@@ -1,4 +1,4 @@
-import { synthesizeToBlob, DEFAULT_VOICE, VOICES } from "@/lib/tts";
+import { synthesizeToBlob, DEFAULT_VOICE, VOICES } from "../tts.js";
 
 const BASE = "https://api.wavespeed.ai/api/v3";
 

@@ -1,6 +1,6 @@
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import { put } from "@vercel/blob";
-export { estimateSpeechSeconds } from "@/lib/credits";
+export { estimateSpeechSeconds } from "./credits.js";
 
 /**
  * Voices exposed in the UI. Any Microsoft Edge neural voice ShortName works.

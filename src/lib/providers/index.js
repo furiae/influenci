@@ -1,8 +1,8 @@
-import { estimateCredits } from "@/lib/credits";
+import { estimateCredits } from "../credits.js";
 export { estimateCredits };
-import wavespeed from "./wavespeed";
-import muapi from "./muapi";
-import zerogpu from "./zerogpu";
+import wavespeed from "./wavespeed.js";
+import muapi from "./muapi.js";
+import zerogpu from "./zerogpu.js";
 
 /**
  * Provider adapter contract
