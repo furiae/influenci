@@ -4,11 +4,14 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // auth() themselves and answer 401, so they are left alone here.
 const isProtectedPage = createRouteMatcher(["/", "/actors(.*)", "/gallery(.*)"]);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedPage(request)) {
-    await auth.protect();
-  }
-});
+export default clerkMiddleware(
+  async (auth, request) => {
+    if (isProtectedPage(request)) {
+      await auth.protect();
+    }
+  },
+  { signInUrl: "/login", signUpUrl: "/signup" }
+);
 
 export const config = {
   matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
