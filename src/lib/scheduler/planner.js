@@ -5,6 +5,7 @@ import { planIdeas } from "@/lib/content/planner";
 import { logEvent } from "./status";
 import { renderPostWorkflow } from "@/workflows/render-post";
 import { todayIn, addDays } from "@/lib/time";
+import { topBenchmarks } from "@/lib/benchmarks";
 
 /**
  * Create the day's Post rows (+ per-platform targets) for one actor and start
@@ -27,7 +28,8 @@ export async function planActorDay(actor, ymd, { videosPerDay } = {}) {
     take: 20,
     select: { idea: true },
   });
-  const { ideas, costCents } = await planIdeas({ actor, date: ymd, count: missing.length, recent: recent.map((r) => r.idea) });
+  const benchmarks = await topBenchmarks(actor.id, { limit: 10 });
+  const { ideas, costCents } = await planIdeas({ actor, date: ymd, count: missing.length, recent: recent.map((r) => r.idea), benchmarks });
   await logEvent({ actorId: actor.id, kind: "plan", step: "ideas", costCents, message: `${ideas.length} ideas for ${ymd}` });
 
   const clip = actor.defaultClip && typeof actor.defaultClip === "object" ? actor.defaultClip : {};

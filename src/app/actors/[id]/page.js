@@ -5,13 +5,15 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import toast, { Toaster } from "react-hot-toast";
-import { FiUpload, FiLoader, FiTrash2, FiZap, FiCheckCircle, FiAlertCircle, FiUser, FiSliders, FiCalendar, FiLink, FiFilm, FiArrowLeft, FiPlay } from "react-icons/fi";
+import { FiUpload, FiLoader, FiTrash2, FiZap, FiCheckCircle, FiAlertCircle, FiUser, FiSliders, FiCalendar, FiLink, FiFilm, FiArrowLeft, FiPlay, FiTrendingUp } from "react-icons/fi";
 import { PLATFORMS, PLATFORM_INFO } from "@/lib/platforms";
+import CompetitorsTab from "@/components/actor/CompetitorsTab";
 
 const TABS = [
   { id: "profile", label: "Profile", icon: FiUser },
   { id: "identity", label: "Identity", icon: FiZap },
   { id: "cadence", label: "Cadence", icon: FiSliders },
+  { id: "competitors", label: "Competitors", icon: FiTrendingUp },
   { id: "channels", label: "Channels", icon: FiLink },
   { id: "posts", label: "Posts", icon: FiFilm },
 ];
@@ -422,6 +424,7 @@ function ActorDetail() {
         {tab === "profile" && <ProfileTab key={actor.updatedAt} actor={actor} save={save} saving={saving} />}
         {tab === "identity" && <IdentityTab actor={actor} reload={load} />}
         {tab === "cadence" && <CadenceTab key={actor.updatedAt} actor={actor} save={save} saving={saving} />}
+        {tab === "competitors" && <CompetitorsTab actor={actor} />}
         {tab === "channels" && <ChannelsTab actor={actor} />}
         {tab === "posts" && <PostsTab actor={actor} reload={load} />}
       </div>

@@ -60,13 +60,63 @@ model Actor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creations Creation[]
-  channels  Channel[]
-  posts     Post[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creations   Creation[]
+  channels    Channel[]
+  posts       Post[]
+  competitors Competitor[]
 
   @@unique([userId, slug])
   @@index([userId])
+}
+
+/// A reference account whose public posts are benchmarks for one actor.
+model Competitor {
+  id            String    @id @default(cuid())
+  actorId       String
+  platform      String // youtube | x | instagram | tiktok | pinterest | facebook
+  handle        String
+  externalId    String?
+  displayName   String?
+  url           String?   @db.Text
+  followers     Int?
+  active        Boolean   @default(true)
+  notes         String?   @db.Text
+  lastFetchedAt DateTime?
+  lastError     String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  actor Actor           @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  posts BenchmarkPost[]
+
+  @@unique([actorId, platform, handle])
+  @@index([actorId])
+}
+
+/// A public post fetched from a competitor, with engagement metrics.
+model BenchmarkPost {
+  id           String   @id @default(cuid())
+  competitorId String
+  platform     String
+  externalId   String
+  url          String?  @db.Text
+  caption      String?  @db.Text
+  mediaType    String?
+  thumbnailUrl String?  @db.Text
+  postedAt     DateTime?
+  likes        Int      @default(0)
+  comments     Int      @default(0)
+  shares       Int      @default(0)
+  views        Int      @default(0)
+  score        Float    @default(0)
+  durationSec  Int?
+  fetchedAt    DateTime @default(now())
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@unique([competitorId, externalId])
+  @@index([competitorId, score])
 }
 
 /// A connected social account for one actor on one platform.

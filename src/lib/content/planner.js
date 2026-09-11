@@ -3,11 +3,16 @@ import { IdeasSchema, ScriptSchema, CaptionsSchema, BibleSchema } from "./schema
 import { bibleToSystemPrompt, mergeBible } from "@/lib/personas/bible";
 import { enforceLimits } from "./limits";
 import { PLATFORMS } from "@/lib/platforms";
+import { benchmarksToPrompt } from "@/lib/benchmarks";
 
 /** Daily ideas. `recent` = recent post ideas to avoid repeating. */
-export async function planIdeas({ actor, date, count = 1, recent = [] }) {
+export async function planIdeas({ actor, date, count = 1, recent = [], benchmarks = [] }) {
   const system = bibleToSystemPrompt(actor);
+  const bench = benchmarksToPrompt(benchmarks);
   const user = `Today is ${date}. Propose ${count} distinct video idea(s) for ${actor.name}.
+${bench ? `
+${bench}
+` : ""}
 Rotate content pillars. Avoid anything close to these recent ideas:
 ${recent.length ? recent.map((r) => `- ${r}`).join("\n") : "- (none yet)"}
 Each idea must work as a ${actor.kind === "pet" ? "silent-or-ambient pet clip" : "5-10 second talking or action clip"} shot vertically.`;
