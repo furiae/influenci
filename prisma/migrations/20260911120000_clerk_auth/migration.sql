@@ -1,5 +1,3 @@
-◇ injected env (22) from .env.local // tip: ◈ secrets for agents [www.dotenvx.com]
-◇ injected env (0) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
 -- DropForeignKey
 ALTER TABLE "Account" DROP CONSTRAINT "Account_userId_fkey";
 
