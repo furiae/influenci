@@ -298,28 +298,61 @@ function CadenceTab({ actor, save, saving }) {
   );
 }
 
-function ChannelsTab({ actor }) {
+function ChannelsTab({ actor, reload }) {
   const byPlatform = Object.fromEntries((actor.channels || []).map((c) => [c.platform, c]));
+  const [implemented, setImplemented] = useState(null);
+  const [busy, setBusy] = useState(null);
+  useEffect(() => {
+    fetch("/api/social").then((r) => (r.ok ? r.json() : { implemented: [] })).then((d) => setImplemented(d.implemented || [])).catch(() => setImplemented([]));
+  }, []);
+
+  const probe = async (ch) => {
+    setBusy(ch.id);
+    try {
+      const res = await fetch(`/api/channels/${ch.id}?action=probe`, { method: "POST" });
+      const d = await res.json();
+      d.ok ? toast.success(`${PLATFORM_INFO[ch.platform].label} token is valid`) : toast.error(d.error || "Check failed");
+      reload();
+    } finally {
+      setBusy(null);
+    }
+  };
+  const disconnect = async (ch) => {
+    if (!confirm(`Disconnect ${PLATFORM_INFO[ch.platform].label}?`)) return;
+    setBusy(ch.id);
+    await fetch(`/api/channels/${ch.id}`, { method: "DELETE" });
+    setBusy(null);
+    reload();
+  };
+
   return (
     <div className="rounded-xl border border-divider bg-bg-card divide-y divide-divider">
       {PLATFORMS.map((p) => {
         const ch = byPlatform[p];
+        const ready = implemented?.includes(p);
         return (
           <div key={p} className="flex items-center justify-between p-4 gap-4">
-            <div className="flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: PLATFORM_INFO[p].color }} />
-              <div>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: PLATFORM_INFO[p].color }} />
+              {ch?.avatarUrl && <img src={ch.avatarUrl} alt="" className="w-7 h-7 rounded-full object-cover" />}
+              <div className="min-w-0">
                 <div className="text-sm font-bold text-foreground">{PLATFORM_INFO[p].label}</div>
-                <div className="text-[11px] text-muted">{ch ? `${ch.handle || ch.displayName || ch.externalId} · ${ch.status}` : "Not connected"}</div>
+                <div className="text-[11px] text-muted truncate">
+                  {ch ? `@${ch.handle || ch.displayName || ch.externalId} · ${ch.status}${ch.lastPublishedAt ? ` · last post ${new Date(ch.lastPublishedAt).toLocaleDateString()}` : ""}${ch.lastError ? ` · ${ch.lastError}` : ""}` : ready ? "Not connected" : "Connector coming in a later milestone"}
+                </div>
               </div>
             </div>
-            <a href={`/api/social/${p}/connect?actorId=${actor.id}`} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold text-muted pointer-events-none opacity-60" title="Connectors arrive in the next milestone">
-              {ch ? "Reconnect" : "Connect"} (soon)
-            </a>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {ch && <button onClick={() => probe(ch)} disabled={busy === ch.id} className="px-3 py-2 rounded-lg border border-divider text-xs font-bold text-muted">Check</button>}
+              {ch && <button onClick={() => disconnect(ch)} disabled={busy === ch.id} className="px-3 py-2 rounded-lg text-xs font-bold text-rose-500">Disconnect</button>}
+              <a href={ready ? `/api/social/${p}/connect?actorId=${actor.id}` : undefined} className={`px-4 py-2 rounded-lg text-xs font-bold ${ready ? "bg-primary text-white" : "border border-divider text-muted pointer-events-none opacity-60"}`}>
+                {ch ? "Reconnect" : "Connect"}
+              </a>
+            </div>
           </div>
         );
       })}
-      <p className="p-4 text-[11px] text-muted">Publishing connectors ship per platform: YouTube and X first, then Pinterest, Meta, TikTok. Until then, approved posts can be downloaded from the calendar and posted by hand.</p>
+      <p className="p-4 text-[11px] text-muted">Each actor connects its own account. Developer-app credentials live in <Link href="/settings/platforms" className="text-primary font-bold">Settings → Platform apps</Link>. Until a platform is connected, its posts are skipped and can be downloaded from the calendar.</p>
     </div>
   );
 }
@@ -377,6 +410,12 @@ function ActorDetail() {
       .then(setActor)
       .catch(() => { toast.error("Actor not found"); router.push("/actors"); });
   useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const c = searchParams.get("connected");
+    const e = searchParams.get("error");
+    if (c) toast.success(`${c} connected`);
+    if (e) toast.error(e);
+  }, [searchParams]);
 
   // Refresh while identity is building.
   useEffect(() => {
@@ -425,7 +464,7 @@ function ActorDetail() {
         {tab === "identity" && <IdentityTab actor={actor} reload={load} />}
         {tab === "cadence" && <CadenceTab key={actor.updatedAt} actor={actor} save={save} saving={saving} />}
         {tab === "competitors" && <CompetitorsTab actor={actor} />}
-        {tab === "channels" && <ChannelsTab actor={actor} />}
+        {tab === "channels" && <ChannelsTab actor={actor} reload={load} />}
         {tab === "posts" && <PostsTab actor={actor} reload={load} />}
       </div>
     </div>

@@ -285,3 +285,10 @@ model Creation {
   @@unique([provider, requestId])
   @@index([userId, createdAt])
 }
+
+/// Small key/value store for scheduler state (ticker run id, last planner day…).
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

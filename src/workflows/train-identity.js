@@ -23,28 +23,32 @@ const ANGLES = [
  */
 export async function trainIdentityWorkflow(actorId, { skipElement = false } = {}) {
   "use workflow";
-  const kind = await beginIdentity(actorId);
+  try {
+    const kind = await beginIdentity(actorId);
 
-  if (kind === "human") {
-    const have = await referenceCount(actorId);
-    for (let i = have; i < ANGLES.length; i++) {
-      const requestId = await submitReference(actorId, i);
-      let r;
-      do {
-        await sleep("15s");
-        r = await pollPrediction(requestId);
-      } while (!r.done);
-      if (r.url) await storeReference(actorId, i, r.url);
+    if (kind === "human") {
+      const have = await referenceCount(actorId);
+      for (let i = have; i < ANGLES.length; i++) {
+        const requestId = await submitReference(actorId, i);
+        let r;
+        do {
+          await sleep("15s");
+          r = await pollPrediction(requestId);
+        } while (!r.done);
+        if (r.url) await storeReference(actorId, i, r.url);
+      }
+      if (!skipElement) await humanElement(actorId);
+      return await markReady(actorId);
     }
-    if (!skipElement) await humanElement(actorId);
-    return await markReady(actorId);
-  }
 
-  const predictionId = await petSubmit(actorId);
-  for (;;) {
-    await sleep("60s");
-    const r = await petCheck(actorId, predictionId);
-    if (r.done) return r.ok ? await markReady(actorId) : await markFailed(actorId, r.error);
+    const predictionId = await petSubmit(actorId);
+    for (;;) {
+      await sleep("60s");
+      const r = await petCheck(actorId, predictionId);
+      if (r.done) return r.ok ? await markReady(actorId) : await markFailed(actorId, r.error);
+    }
+  } catch (err) {
+    return await markFailed(actorId, err?.message || String(err));
   }
 }
 
@@ -75,7 +79,7 @@ async function submitReference(actorId, index) {
   const identity = actor.canonicalPrompt?.trim() || actor.name;
   const prompt = `${identity}. Same individual as the reference image with identical features and markings, ${ANGLES[index]}, neutral plain background, soft even studio lighting, photorealistic, sharp focus, no text.`;
   try {
-    const id = await wsSubmit(RENDER.references.slug, { prompt, images: [actor.imageUrl], aspect_ratio: "3:4", num_images: 1, output_format: "jpeg" });
+    const id = await wsSubmit(RENDER.references.slug, { prompt, images: [actor.imageUrl], aspect_ratio: "3:4", output_format: "jpeg" });
     console.log("[IDENTITY] reference submitted", actor.name, index, id);
     return id;
   } catch (err) {

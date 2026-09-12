@@ -151,6 +151,15 @@ function PostDrawer({ postId, onClose, onChanged }) {
         <div className="flex flex-wrap gap-2">
           {canApprove && <button onClick={() => act("approve", patch({ status: "approved" }))} disabled={busy} className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold flex items-center gap-1"><FiCheck /> Approve</button>}
           {post.status === "approved" && <button onClick={() => act("unapprove", patch({ status: "draft" }))} disabled={busy} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold">Back to draft</button>}
+          {["approved", "partial", "publishing"].includes(post.status) && <button onClick={() => act("publish-now", async () => {
+            for (const t of post.targets) if (["queued", "pending", "failed"].includes(t.status)) await fetch(`/api/posts/${post.id}/targets/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "queued", scheduledAt: new Date().toISOString() }) });
+            const r = await fetch("/api/ops/publisher", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "Publisher failed");
+            const started = (d.publisher || []).filter((x) => x.started).length;
+            const skipped = (d.publisher || []).filter((x) => x.skipped).map((x) => `${x.platform}: ${x.skipped}`);
+            toast[started ? "success" : "error"](started ? `Publishing ${started} target(s)` : `Nothing started${skipped.length ? ` (${skipped.join(", ")})` : ""}`);
+          })} disabled={busy} className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold flex items-center gap-1"><FiZap /> Publish now</button>}
           {(post.videoUrl || post.keyframeUrl) && <a href={post.videoUrl || post.keyframeUrl} download target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-1"><FiDownload /> Download</a>}
           {post.script && post.status !== "rendering" && <button onClick={() => act("captions", post_("captions"))} disabled={busy} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-1"><FiEdit3 /> Regenerate captions</button>}
           {post.status !== "rendering" && <button onClick={() => act("rerender", post_("render", { keepScript: true }))} disabled={busy} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-1"><FiRefreshCw /> Re-render</button>}

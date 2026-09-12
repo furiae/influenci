@@ -23,7 +23,6 @@ export async function generateReferenceSet(actor, { count = 4 } = {}) {
       prompt,
       images: [actor.imageUrl],
       aspect_ratio: "3:4",
-      num_images: 1,
       output_format: "jpeg",
     });
     const outputs = await wsWait(id, { intervalMs: 3000, timeoutMs: 8 * 60 * 1000 });

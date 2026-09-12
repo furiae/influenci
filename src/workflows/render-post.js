@@ -19,7 +19,14 @@ const MAX_KEYFRAME_ATTEMPTS = 3;
  */
 export async function renderPostWorkflow(postId) {
   "use workflow";
+  try {
+    return await renderBody(postId);
+  } catch (err) {
+    return await failRender(postId, err?.message || String(err));
+  }
+}
 
+async function renderBody(postId) {
   const ctx = await beginRender(postId);
   if (!ctx.ok) return { postId, skipped: ctx.reason };
 

@@ -24,7 +24,6 @@ export async function submitKeyframeRequest({ actor, script, seed }) {
       prompt,
       images: referenceSet(actor, 2),
       loras: [{ path: actor.loraUrl, scale: 1 }],
-      num_images: 1,
       output_format: "jpeg",
       ...(seed != null ? { seed } : {}),
     };
@@ -34,7 +33,6 @@ export async function submitKeyframeRequest({ actor, script, seed }) {
       prompt,
       images: referenceSet(actor, 6),
       aspect_ratio: "9:16",
-      num_images: 1,
       output_format: "jpeg",
       ...(seed != null ? { seed } : {}),
     };
