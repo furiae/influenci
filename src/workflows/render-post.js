@@ -1,12 +1,12 @@
 import { sleep, FatalError, RetryableError } from "workflow";
 import { prisma } from "@/lib/prisma";
 import { wsSubmit, wsResult, WavespeedError } from "@/lib/identity/wavespeed";
-import { generateKeyframe } from "@/lib/identity/keyframe";
+import { submitKeyframeRequest } from "@/lib/identity/keyframe";
 import { scoreIdentity } from "@/lib/identity/qa";
 import { writeScript, writeVariants } from "@/lib/content/planner";
 import { ClaudeError } from "@/lib/content/claude";
 import { buildMotionPrompt, negativeFor } from "@/lib/personas/prompts";
-import { RENDER, renderConfig, videoCents } from "@/lib/render/models";
+import { RENDER, renderConfig, videoCents, keyframeCents } from "@/lib/render/models";
 import { copyToBlob } from "@/lib/render/store";
 import { logEvent } from "@/lib/scheduler/status";
 import { PLATFORMS } from "@/lib/platforms";
@@ -25,9 +25,19 @@ export async function renderPostWorkflow(postId) {
 
   await ensureScript(postId);
 
-  let qa = { pass: false };
+  let qa = await currentQa(postId);
   for (let attempt = 0; attempt < MAX_KEYFRAME_ATTEMPTS && !qa.pass; attempt++) {
-    qa = await keyframeAttempt(postId, attempt);
+    const requestId = await submitKeyframe(postId, attempt);
+    let r;
+    do {
+      await sleep("15s");
+      r = await pollPrediction(requestId);
+    } while (!r.done);
+    if (!r.url) {
+      qa = { pass: false, issues: [r.error || "keyframe generation failed"] };
+      continue;
+    }
+    qa = await storeAndQaKeyframe(postId, attempt, r.url);
   }
   if (!qa.pass) return await failRender(postId, `identity_qa: ${qa.issues?.join("; ") || "below threshold"}`);
 
@@ -92,24 +102,57 @@ async function ensureScript(postId) {
 }
 ensureScript.maxRetries = 3;
 
-async function keyframeAttempt(postId, attempt) {
+async function currentQa(postId) {
   "use step";
   const post = await loadPost(postId);
   if (post.keyframeQa?.pass && post.keyframeUrl) return post.keyframeQa;
+  return { pass: false };
+}
+
+async function submitKeyframe(postId, attempt) {
+  "use step";
+  const post = await loadPost(postId);
   try {
-    const kf = await generateKeyframe({ actor: post.actor, script: post.script || {}, seed: 1000 + attempt * 7919 });
-    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: kf.cents, data: { attempt, url: kf.url } });
-    const qa = await scoreIdentity({ actor: post.actor, candidateUrl: kf.url });
+    const { requestId, prompt } = await submitKeyframeRequest({ actor: post.actor, script: post.script || {}, seed: 1000 + attempt * 7919 });
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", data: { attempt, requestId, prompt } });
+    console.log("[RENDER] keyframe submitted", postId, "attempt", attempt, requestId);
+    return requestId;
+  } catch (err) {
+    throw wrap(err);
+  }
+}
+submitKeyframe.maxRetries = 2;
+
+async function pollPrediction(requestId) {
+  "use step";
+  try {
+    const r = await wsResult(requestId);
+    if (r.status === "completed") return { done: true, url: r.outputs[0] || null };
+    if (r.status === "failed") return { done: true, url: null, error: r.error };
+    return { done: false };
+  } catch (err) {
+    throw wrap(err);
+  }
+}
+pollPrediction.maxRetries = 5;
+
+async function storeAndQaKeyframe(postId, attempt, sourceUrl) {
+  "use step";
+  const post = await loadPost(postId);
+  try {
+    const stored = await copyToBlob(sourceUrl, `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.jpg`, { contentType: "image/jpeg" });
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: keyframeCents(post.actor), data: { attempt, url: stored.url } });
+    const qa = await scoreIdentity({ actor: post.actor, candidateUrl: stored.url });
     await logEvent({ postId, actorId: post.actorId, kind: "render", step: "qa", status: qa.pass ? "ok" : "retry", costCents: qa.cents, message: `score ${qa.score.toFixed(2)}`, data: { attempt, issues: qa.issues } });
     const record = { pass: qa.pass, score: qa.score, issues: qa.issues, attempts: attempt + 1 };
-    await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: kf.url, keyframeQa: record } });
+    await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: stored.url, keyframeQa: record } });
     console.log("[RENDER] keyframe", postId, "attempt", attempt, "score", qa.score);
     return record;
   } catch (err) {
     throw wrap(err);
   }
 }
-keyframeAttempt.maxRetries = 2;
+storeAndQaKeyframe.maxRetries = 2;
 
 async function ensureCaptions(postId) {
   "use step";

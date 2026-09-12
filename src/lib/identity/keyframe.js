@@ -14,7 +14,7 @@ export function referenceSet(actor, max = 6) {
  * Humans: multi-reference edit (Nano Banana Pro). Pets with a LoRA: FLUX.2 edit-lora.
  * Returns { url, cents, prompt, requestId }.
  */
-export async function generateKeyframe({ actor, script, seed, pathPrefix = "keyframes" }) {
+export async function submitKeyframeRequest({ actor, script, seed }) {
   const prompt = buildKeyframePrompt(actor, script);
   let slug;
   let body;
@@ -40,7 +40,13 @@ export async function generateKeyframe({ actor, script, seed, pathPrefix = "keyf
     };
   }
   const requestId = await wsSubmit(slug, body);
-  const outputs = await wsWait(requestId, { intervalMs: 3000, timeoutMs: 8 * 60 * 1000 });
+  return { requestId, prompt };
+}
+
+/** Synchronous variant for interactive use (test keyframe button). */
+export async function generateKeyframe({ actor, script, seed, pathPrefix = "keyframes" }) {
+  const { requestId, prompt } = await submitKeyframeRequest({ actor, script, seed });
+  const outputs = await wsWait(requestId, { intervalMs: 3000, timeoutMs: 4 * 60 * 1000 });
   const src = outputs[0];
   if (!src) throw new Error("Keyframe model returned no image");
   const stored = await copyToBlob(src, `${pathPrefix}/${actor.slug || actor.id}-${Date.now()}.${extFor(src, "jpg")}`, { contentType: "image/jpeg" });
