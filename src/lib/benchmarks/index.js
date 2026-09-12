@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { FETCHERS } from "./fetchers";
 import { decrypt } from "@/lib/crypto";
+import { analyzeVideo, isYouTube } from "./watch";
 
 /**
  * Engagement score used to rank benchmark posts across platforms:
@@ -80,12 +81,42 @@ export async function topBenchmarks(actorId, { limit = 12, days = 90 } = {}) {
   });
 }
 
-/** Compact text block for prompts. */
+/** Analyse one benchmark post's video with Gemini and store the breakdown. */
+export async function analyzeBenchmark(postId) {
+  const p = await prisma.benchmarkPost.findUnique({ where: { id: postId }, include: { competitor: true } });
+  if (!p) throw new Error("Benchmark post not found");
+  const source = isYouTube(p.url) ? { youtubeUrl: p.url } : p.thumbnailUrl && /\.mp4(\?|$)/i.test(p.thumbnailUrl) ? { videoUrl: p.thumbnailUrl } : null;
+  if (!source) throw new Error(`No watchable video source for ${p.platform} post (only YouTube links and direct mp4 files can be analysed)`);
+  const analysis = await analyzeVideo({ ...source, context: `${p.platform} post by @${p.competitor.handle}. Caption: ${String(p.caption || "").slice(0, 300)}` });
+  await prisma.benchmarkPost.update({ where: { id: postId }, data: { analysis, analyzedAt: new Date(), ...(analysis.durationSec ? { durationSec: Math.round(analysis.durationSec) } : {}) } });
+  console.log("[BENCHMARK_ANALYZE]", p.platform, p.competitor.handle, analysis.formatLabel);
+  return analysis;
+}
+
+/** Analyse the top N unanalysed benchmark posts for an actor. */
+export async function analyzeTopBenchmarks(actorId, { limit = 5 } = {}) {
+  const top = await topBenchmarks(actorId, { limit: 30 });
+  const todo = top.filter((p) => !p.analysis && isYouTube(p.url)).slice(0, limit);
+  const out = [];
+  for (const p of todo) {
+    try {
+      out.push({ id: p.id, handle: p.competitor.handle, format: (await analyzeBenchmark(p.id)).formatLabel });
+    } catch (err) {
+      out.push({ id: p.id, handle: p.competitor.handle, error: String(err?.message || err) });
+    }
+  }
+  return out;
+}
+
+/** Compact text block for prompts. Analysed posts contribute hook, format and why-it-works. */
 export function benchmarksToPrompt(posts) {
   if (!posts?.length) return "";
   const lines = posts.slice(0, 10).map((p, i) => {
-    const cap = String(p.caption || "").replace(/\s+/g, " ").slice(0, 160);
-    return `${i + 1}. [${p.platform} @${p.competitor?.handle}] ${cap || "(no caption)"} — ${p.likes} likes, ${p.comments} comments, ${p.views} views`;
+    const cap = String(p.caption || "").replace(/\s+/g, " ").slice(0, 140);
+    const base = `${i + 1}. [${p.platform} @${p.competitor?.handle}] ${cap || "(no caption)"} — ${p.likes} likes, ${p.comments} comments, ${p.views} views`;
+    const a = p.analysis;
+    if (!a) return base;
+    return `${base}\n   format: ${a.formatLabel || "?"} · hook: ${a.hook || "?"} · why it works: ${a.whyItWorks || "?"}${a.visualStyle ? ` · style: ${a.visualStyle}` : ""}`;
   });
   return `WHAT IS WORKING IN THIS NICHE RIGHT NOW (competitor posts with the highest engagement; use them as benchmarks for angle, hook style and format — never copy wording):\n${lines.join("\n")}`;
 }

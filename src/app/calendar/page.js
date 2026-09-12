@@ -209,7 +209,7 @@ function Calendar() {
 
   const actors = useMemo(() => {
     const m = new Map();
-    posts.forEach((p) => m.set(p.actor.id, p.actor));
+    posts.forEach((p) => m.set(p.actor.id, { ...p.actor, category: p.actor.bible?.category || p.actor.bible?.niche || "" }));
     return [...m.values()];
   }, [posts]);
   const visible = actorFilter ? posts.filter((p) => p.actor.id === actorFilter) : posts;
@@ -245,7 +245,7 @@ function Calendar() {
             <div key={a.id} className="contents">
               <div className="border-b border-divider p-2 flex items-center gap-2">
                 <img src={a.imageUrl} alt="" className="w-7 h-7 rounded-full object-cover bg-glass-hover" />
-                <Link href={`/actors/${a.id}`} className="text-xs font-bold text-foreground hover:text-primary truncate">{a.name}</Link>
+                <div className="min-w-0"><Link href={`/actors/${a.id}`} className="text-xs font-bold text-foreground hover:text-primary truncate block">{a.name}</Link><div className="text-[10px] text-primary truncate">{a.category || ""}</div></div>
               </div>
               {days.map((d) => (
                 <div key={d} className="border-b border-l border-divider p-1.5 space-y-1.5 min-h-[88px]">

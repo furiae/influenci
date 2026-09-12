@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { actingUser } from "@/lib/ops-auth";
 import { prisma } from "@/lib/prisma";
 import { isPlatform } from "@/lib/platforms";
-import { refreshActorCompetitors, topBenchmarks } from "@/lib/benchmarks";
+import { refreshActorCompetitors, topBenchmarks, analyzeTopBenchmarks } from "@/lib/benchmarks";
 import { FETCHERS } from "@/lib/benchmarks/fetchers";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 async function ownedActor(req, id) {
   const user = await actingUser(req);
@@ -31,6 +31,11 @@ export async function POST(req, { params }) {
     const actor = await ownedActor(req, id);
     if (!actor) return new NextResponse("Unauthorized", { status: 401 });
     const body = await req.json().catch(() => ({}));
+
+    if (body.action === "analyze") {
+      const results = await analyzeTopBenchmarks(id, { limit: Number(body.limit) || 5 });
+      return NextResponse.json({ results, top: await topBenchmarks(id, { limit: 20 }) });
+    }
 
     if (body.action === "refresh") {
       const results = await refreshActorCompetitors(id);

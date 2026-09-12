@@ -47,7 +47,7 @@ function ProfileTab({ actor, save, saving }) {
   const [form, setForm] = useState({
     name: actor.name, slug: actor.slug || "", kind: actor.kind, timezone: actor.timezone, notes: actor.notes || "",
     canonicalPrompt: actor.canonicalPrompt || "", negativePrompt: actor.negativePrompt || "",
-    tagline: b.tagline || "", bio: b.bio || "", age: b.age ?? "", pronouns: b.pronouns || "", location: b.location || "", niche: b.niche || "",
+    category: b.category || "", tagline: b.tagline || "", bio: b.bio || "", age: b.age ?? "", pronouns: b.pronouns || "", location: b.location || "", niche: b.niche || "",
     contentPillars: listToText(b.contentPillars), toneOfVoice: b.toneOfVoice || "", catchphrases: listToText(b.catchphrases), doNots: listToText(b.doNots),
     audience: b.audience || "", aiDisclosure: b.aiDisclosure || "AI-generated character",
     vDescription: v.description || "", wardrobe: listToText(v.wardrobe), signatureProps: listToText(v.signatureProps), settings: listToText(v.settings), lighting: v.lighting || "", cameraStyle: v.cameraStyle || "",
@@ -59,7 +59,7 @@ function ProfileTab({ actor, save, saving }) {
     name: form.name, slug: form.slug, kind: form.kind, timezone: form.timezone, notes: form.notes,
     canonicalPrompt: form.canonicalPrompt, negativePrompt: form.negativePrompt,
     bible: {
-      tagline: form.tagline, bio: form.bio, age: form.age === "" ? null : Number(form.age), pronouns: form.pronouns, location: form.location, niche: form.niche,
+      category: form.category, tagline: form.tagline, bio: form.bio, age: form.age === "" ? null : Number(form.age), pronouns: form.pronouns, location: form.location, niche: form.niche,
       contentPillars: textToList(form.contentPillars), toneOfVoice: form.toneOfVoice, catchphrases: textToList(form.catchphrases), doNots: textToList(form.doNots),
       audience: form.audience, aiDisclosure: form.aiDisclosure,
       visual: { description: form.vDescription, wardrobe: textToList(form.wardrobe), signatureProps: textToList(form.signatureProps), settings: textToList(form.settings), lighting: form.lighting, cameraStyle: form.cameraStyle },
@@ -117,8 +117,9 @@ function ProfileTab({ actor, save, saving }) {
       <section className="rounded-xl border border-divider bg-bg-card p-5 space-y-4">
         <h3 className="text-sm font-black text-foreground">Voice</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Category (shown under the name)"><input className={inputCls} value={form.category} onChange={set("category")} placeholder="e.g. Travel" /></Field>
           <Field label="Tagline"><input className={inputCls} value={form.tagline} onChange={set("tagline")} /></Field>
-          <Field label="Niche"><input className={inputCls} value={form.niche} onChange={set("niche")} /></Field>
+          <div className="md:col-span-2"><Field label="Niche"><input className={inputCls} value={form.niche} onChange={set("niche")} /></Field></div>
           <div className="md:col-span-2"><Field label="Bio"><textarea rows={2} className={inputCls} value={form.bio} onChange={set("bio")} /></Field></div>
           <Field label="Age"><input className={inputCls} value={form.age} onChange={set("age")} /></Field>
           <Field label="Pronouns"><input className={inputCls} value={form.pronouns} onChange={set("pronouns")} /></Field>
@@ -450,7 +451,7 @@ function ActorDetail() {
           <div className="w-16 h-16 rounded-2xl bg-glass-hover overflow-hidden border border-divider">{actor.imageUrl && <img src={actor.imageUrl} alt="" className="w-full h-full object-cover" />}</div>
           <div className="flex-1">
             <h1 className="text-2xl font-black text-foreground flex items-center gap-3">{actor.name} <StatusPill status={actor.identityStatus} /></h1>
-            <p className="text-xs text-muted">{actor.kind} · {actor.bible?.tagline || actor.bible?.niche || "no bible yet"}</p>
+            <p className="text-xs text-muted"><span className="font-bold text-primary">{actor.bible?.category || actor.bible?.niche || actor.kind}</span> · {actor.bible?.tagline || "no bible yet"}</p>
           </div>
         </header>
         <nav className="flex gap-1 border-b border-divider">

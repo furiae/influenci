@@ -19,6 +19,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Ginger, a ruby-red Cavalier King Charles Spaniel with silky chestnut coat, long feathered ears, large dark round eyes, a small white teardrop patch on the chest, and a soft plumed tail",
     bible: {
+      category: "Pets · Dog",
       tagline: "Small dog, big feelings.",
       bio: "Ginger is a ruby Cavalier who treats every day like a spa day. Naps, snacks, slow walks and dramatic sighs.",
       age: 3,
@@ -51,6 +52,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Frank, a chunky orange tabby cat with bold classic tabby stripes, a distinct M marking on the forehead, amber eyes, white whisker pads, and a slightly grumpy expression",
     bible: {
+      category: "Pets · Cat",
       tagline: "Unbothered. Moisturized. In my lane.",
       bio: "Frank is an orange tabby with strong opinions about closed doors, empty bowls and Mondays.",
       age: 5,
@@ -84,6 +86,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Molly, a 19-year-old woman with long wavy honey-blonde hair, light freckles across her nose, green eyes, a bright easy smile, athletic build, wearing casual pastel athleisure",
     bible: {
+      category: "Food · Workout · Makeup",
       tagline: "Fun food, sweaty workouts, five-minute makeup.",
       bio: "Molly is 19, a college sophomore who tries every viral snack, every gym trend and every drugstore product so you don't have to.",
       age: 19,
@@ -116,6 +119,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Jeff, a 25-year-old man with short dark textured hair, light stubble, brown eyes, lean muscular build, a small scar on the left eyebrow, wearing a fitted black training tee",
     bible: {
+      category: "Fitness",
       tagline: "Train smart. Eat enough. Sleep like it's your job.",
       bio: "Jeff is 25, a former college athlete turned coach who keeps fitness simple: consistency over hacks.",
       age: 25,
@@ -148,6 +152,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Katie, a 32-year-old woman with a dark bob haircut with blunt bangs, blue-grey eyes, clear-frame glasses, fair skin, wearing a black oversized band tee and a purple over-ear headset",
     bible: {
+      category: "Video Games",
       tagline: "Cozy games, hot takes, no gatekeeping.",
       bio: "Katie is 32, a lifelong gamer who reviews games, shares setups and explains patch notes like a friend would.",
       age: 32,
@@ -180,6 +185,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Jenn, a 28-year-old woman with sleek shoulder-length black hair, dark almond eyes, a small beauty mark under the right eye, warm medium skin tone, minimalist gold jewelry, wearing a white blazer",
     bible: {
+      category: "AI",
       tagline: "An AI, openly. Here to show you what's possible.",
       bio: "Jenn is 28 and fully AI-generated, and says so. She explains AI tools, shows what AI creators can do and keeps it honest.",
       age: 28,
@@ -212,6 +218,7 @@ export const DEFAULT_PERSONAS = [
     canonicalPrompt:
       "Nicole, a 33-year-old woman with sun-kissed brunette hair in loose waves, hazel eyes, a light tan, small silver nose stud, wearing a linen shirt and a woven sun hat",
     bible: {
+      category: "Travel",
       tagline: "Slow travel, real budgets, zero FOMO.",
       bio: "Nicole is 33 and has been traveling full-time for four years. She shares realistic itineraries, costs and the quiet places.",
       age: 33,

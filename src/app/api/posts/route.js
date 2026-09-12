@@ -21,7 +21,7 @@ export async function GET(req) {
     where,
     orderBy: [{ planDate: "asc" }, { sequence: "asc" }],
     take: 500,
-    include: { actor: { select: { id: true, name: true, slug: true, kind: true, imageUrl: true, timezone: true } }, targets: { select: TARGET_SELECT, orderBy: { scheduledAt: "asc" } } },
+    include: { actor: { select: { id: true, name: true, slug: true, kind: true, imageUrl: true, timezone: true, bible: true } }, targets: { select: TARGET_SELECT, orderBy: { scheduledAt: "asc" } } },
   });
   return NextResponse.json(posts);
 }

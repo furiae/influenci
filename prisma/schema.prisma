@@ -111,6 +111,9 @@ model BenchmarkPost {
   views        Int      @default(0)
   score        Float    @default(0)
   durationSec  Int?
+  /// Gemini video analysis: { hook, summary, structure, visualStyle, whyItWorks, onScreenText, cta, transcriptExcerpt }
+  analysis     Json?
+  analyzedAt   DateTime?
   fetchedAt    DateTime @default(now())
 
   competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)

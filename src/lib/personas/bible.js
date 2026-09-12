@@ -4,6 +4,7 @@
  */
 
 export const EMPTY_BIBLE = {
+  category: "",
   tagline: "",
   bio: "",
   age: null,

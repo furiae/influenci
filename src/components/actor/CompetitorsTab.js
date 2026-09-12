@@ -55,6 +55,25 @@ export default function CompetitorsTab({ actor }) {
     }
   };
 
+  const analyze = async (postId) => {
+    setBusy(postId || "analyze");
+    try {
+      const res = postId
+        ? await fetch(`/api/benchmarks/${postId}`, { method: "POST" })
+        : await fetch(`/api/actors/${actor.id}/competitors`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "analyze", limit: 5 }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      const errors = (d.results || []).filter((r) => r.error);
+      if (postId) toast.success(`Analysed: ${d.formatLabel || "done"}`);
+      else toast[errors.length && errors.length === d.results.length ? "error" : "success"](errors.length ? `${d.results.length - errors.length} analysed, ${errors.length} failed: ${errors[0].error}` : `${d.results.length} video(s) analysed`);
+      await load();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const remove = async (c) => {
     if (!confirm(`Remove @${c.handle}?`)) return;
     await fetch(`/api/competitors/${c.id}`, { method: "DELETE" });
@@ -100,20 +119,37 @@ export default function CompetitorsTab({ actor }) {
       </section>
 
       <section className="rounded-xl border border-divider bg-bg-card p-5 space-y-3">
-        <h3 className="text-sm font-black text-foreground">Top benchmark posts (last 90 days)</h3>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-black text-foreground">Top benchmark posts (last 90 days)</h3>
+            <p className="text-[11px] text-muted">“Watch” sends the video to Gemini, which returns the hook, structure, visual style and why it works. YouTube links need no download.</p>
+          </div>
+          <button onClick={() => analyze(null)} disabled={busy || !data.top.length} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-2 disabled:opacity-50">{busy === "analyze" ? <FiLoader className="animate-spin" /> : <FiRefreshCw />} Watch top 5</button>
+        </div>
         {data.top.length === 0 ? (
           <p className="text-xs text-muted">Nothing fetched yet.</p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {data.top.map((p) => (
-              <a key={p.id} href={p.url || "#"} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-divider overflow-hidden hover:shadow-md bg-bg-page">
-                <div className="aspect-video bg-glass-hover">{p.thumbnailUrl && <img src={p.thumbnailUrl} alt="" className="w-full h-full object-cover" />}</div>
-                <div className="p-2 space-y-1">
+              <div key={p.id} className="rounded-lg border border-divider overflow-hidden hover:shadow-md bg-bg-page flex flex-col">
+                <a href={p.url || "#"} target="_blank" rel="noopener noreferrer" className="aspect-video bg-glass-hover block">{p.thumbnailUrl && <img src={p.thumbnailUrl} alt="" className="w-full h-full object-cover" />}</a>
+                <div className="p-2 space-y-1 flex-1">
                   <div className="text-[10px] font-bold text-muted flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[p.platform].color }} /> @{p.competitor.handle}</div>
                   <div className="text-[11px] text-foreground line-clamp-2">{p.caption || "(no caption)"}</div>
                   <div className="text-[10px] text-muted">{fmt(p.views)} views · {fmt(p.likes)} likes · {fmt(p.comments)} comments · score {p.score}</div>
+                  {p.analysis ? (
+                    <details className="text-[10px] text-muted">
+                      <summary className="cursor-pointer text-primary font-bold">{p.analysis.formatLabel} · watched</summary>
+                      <p className="mt-1"><strong>Hook:</strong> {p.analysis.hook}</p>
+                      <p><strong>Why it works:</strong> {p.analysis.whyItWorks}</p>
+                      <p><strong>Style:</strong> {p.analysis.visualStyle}</p>
+                      <p><strong>Structure:</strong> {p.analysis.structure}</p>
+                    </details>
+                  ) : (
+                    p.url && /youtu/.test(p.url) && <button onClick={() => analyze(p.id)} disabled={busy} className="text-[10px] font-bold text-primary">{busy === p.id ? "Watching…" : "Watch with Gemini"}</button>
+                  )}
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         )}

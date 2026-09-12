@@ -139,7 +139,8 @@ export default function ActorsPage() {
                   </div>
                   <div className="p-3">
                     <Link href={`/actors/${a.id}`} className="text-sm font-bold text-foreground truncate hover:text-primary block">{a.name}</Link>
-                    <div className="text-[11px] text-muted">{[a.gender, a.ageRange].filter(Boolean).join(" · ") || "Actor"}{a._count?.creations ? ` · ${a._count.creations} video${a._count.creations === 1 ? "" : "s"}` : ""}</div>
+                    <div className="text-[11px] font-semibold text-primary">{a.bible?.category || a.bible?.niche || [a.gender, a.ageRange].filter(Boolean).join(" · ") || "Actor"}</div>
+                    <div className="text-[11px] text-muted">{[a.gender, a.ageRange].filter(Boolean).join(" · ") || (a.kind === "pet" ? "Pet" : "Human")}{a._count?.creations ? ` · ${a._count.creations} video${a._count.creations === 1 ? "" : "s"}` : ""}</div>
                   </div>
                 </motion.div>
               ))}
