@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { FiLoader, FiZap, FiRefreshCw, FiCheck, FiX } from "react-icons/fi";
 import { Field, Section, inputCls, btnPrimary, btnGhost, listToText, textToList } from "@/components/ui/form";
+import { DoInClaude } from "@/components/ui/ai-hint";
 
 function Palette({ palette, onChange }) {
   const set = (i, k, v) => onChange(palette.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
@@ -74,6 +75,7 @@ export default function DesignTab({ actor, reload }) {
       }>
         {!ds && <p className="text-xs text-muted">Import the history first, then extract. Needs a few posts with images.</p>}
         {ds?.summary && <p className="text-xs text-foreground">{ds.summary}</p>}
+        <DoInClaude prompt="extract-design-system" brandId={actor.id} what="Claude studies the top posts and saves the design system here" />
       </Section>
 
       {ds?.pendingSuggestions?.length > 0 && (

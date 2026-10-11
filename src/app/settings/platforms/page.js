@@ -5,6 +5,7 @@ import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
 import { FiCopy, FiCheck, FiExternalLink, FiLoader, FiShield } from "react-icons/fi";
 import { useMe } from "@/lib/useMe";
+import { invalidateAiMode } from "@/components/ui/ai-hint";
 
 const CHECKLIST = {
   meta: [
@@ -138,6 +139,66 @@ function AppCard({ app, onSaved }) {
   );
 }
 
+const AI_STEPS = [
+  "Clerk Dashboard → Configure → OAuth applications → enable Dynamic Client Registration (Claude.ai registers itself as a client)",
+  "Claude.ai → Settings → Connectors → Add custom connector → paste the connector URL below → sign in with your Influenci account",
+  "Claude Code: run the command below once; Claude Desktop uses the same URL under Settings → Connectors",
+  "In Claude, open the Influenci connector's prompts (import-screenshots, weekly-review, recommend-posts, extract-design-system, write-winner-post) and pick a brand",
+];
+
+function AiCard() {
+  const [ai, setAi] = useState(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { fetch("/api/settings/ai").then((r) => r.json()).then(setAi).catch(() => {}); }, []);
+  const setMode = async (mode) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings/ai", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Save failed");
+      setAi(d);
+      invalidateAiMode();
+      toast.success(mode === "subscription" ? "AI runs on your Claude subscription via the connector" : "AI runs on the server's API key");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+  if (!ai) return null;
+  const cli = `claude mcp add --transport http influenci ${ai.connector}`;
+  return (
+    <section id="ai" className="rounded-xl border border-divider bg-bg-card p-5 space-y-4">
+      <div>
+        <h2 className="text-sm font-black text-foreground">AI · Claude</h2>
+        <p className="text-[11px] text-muted">Who pays for post analysis, summaries, design-system extraction and recommendations.</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {[
+          ["subscription", "Claude subscription (Max / Team)", "Claude.ai or Claude Code does the thinking through the Influenci MCP connector. The server only stores and scores. No API spend."],
+          ["api", "Server API key (pay per token)", ai.hasApiKey ? "The server calls Claude with ANTHROPIC_API_KEY during imports and from the tab buttons." : "ANTHROPIC_API_KEY is not set on the server, so this option is unavailable."],
+        ].map(([k, label, desc]) => (
+          <button key={k} type="button" disabled={saving || (k === "api" && !ai.hasApiKey)} onClick={() => setMode(k)} className={`text-left rounded-lg border p-3 space-y-1 disabled:opacity-50 ${ai.mode === k ? "border-primary bg-primary/5" : "border-divider"}`}>
+            <div className="text-xs font-bold text-foreground flex items-center gap-2">{ai.mode === k && <FiCheck className="text-primary" />}{label}</div>
+            <p className="text-[11px] text-muted">{desc}</p>
+          </button>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <div className="text-[11px] uppercase font-bold text-muted tracking-wider">Connector URL (Claude.ai → Settings → Connectors → Add custom connector)</div>
+        <div className="flex items-center gap-2 text-xs"><code className="flex-1 bg-bg-page border border-divider rounded px-2 py-1.5 truncate">{ai.connector}</code><CopyButton value={ai.connector} /></div>
+        <div className="text-[11px] uppercase font-bold text-muted tracking-wider">Claude Code</div>
+        <div className="flex items-center gap-2 text-xs"><code className="flex-1 bg-bg-page border border-divider rounded px-2 py-1.5 truncate">{cli}</code><CopyButton value={cli} /></div>
+      </div>
+      <div className="space-y-1.5">
+        <div className="text-[11px] uppercase font-bold text-muted tracking-wider">Setup</div>
+        {AI_STEPS.map((s, i) => <p key={i} className="text-xs text-foreground">{i + 1}. {s}</p>)}
+        <p className="text-[11px] text-muted">Image and video renders still use Wavespeed; branded cards (winner, contender, throwback, question) render for free with the built-in templates.</p>
+      </div>
+    </section>
+  );
+}
+
 export default function PlatformSettings() {
   const { me, isLoaded } = useMe();
   const [apps, setApps] = useState(null);
@@ -172,6 +233,7 @@ export default function PlatformSettings() {
       <div className="max-w-4xl mx-auto space-y-6">
         {error && <div className="text-xs text-rose-500">{error}</div>}
         {!apps && !error && <div className="py-20 flex justify-center"><FiLoader className="animate-spin text-primary text-2xl" /></div>}
+        {apps && <AiCard />}
         {apps?.map((app) => <AppCard key={app.key} app={app} onSaved={setApps} />)}
       </div>
     </div>

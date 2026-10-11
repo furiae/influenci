@@ -25,9 +25,23 @@ Besides AI personas, Influenci manages **real brand accounts** (`/accounts`): co
 - builds a dashboard and printable report (KPIs, reach trend, ER by format, best time to post, Claude's "what's working / do next"),
 - extracts an editable, versioned **design system + caption style** from the top posts and proposes changes as new posts come in,
 - recommends new posts with a predicted score and reach range, grounded in our stats, hunting/fishing competitor benchmarks, the outdoor seasonal calendar and past prediction accuracy,
-- turns a recommendation into a brand-styled image or reel, schedules it, publishes to Instagram/Facebook, and reads the metrics back so predictions get calibrated.
+- turns a recommendation into a brand-styled image or reel, schedules it, publishes to Instagram/Facebook, and reads the metrics back so predictions get calibrated,
+- composites the brand's own card formats (winner, contender, throwback, question) for free from templates (`src/lib/render/templates/apex-card.js`, satori + resvg): Recommend tab → "Make a brand card", MCP `render_card`, or `create_post` with `visualBrief.template`.
 
 Because the Pages are ones you administer, Meta's Standard Access is enough: no App Review is needed. Daily syncs run from the scheduler ticker.
+
+No Meta app yet? The Posts tab imports **screenshots** of posts (Claude reads caption, date, likes, comments, shares), and `/accounts` has a one-click Apex Outdoor Rewards quick start.
+
+## Claude connector (MCP) — run the AI on your Claude subscription
+
+Influenci is also a remote **MCP server** at `/api/mcp`, so Claude.ai, Claude Desktop and Claude Code can read a brand's stats and write back analyses, design systems, recommendations and posts under your Max/Team subscription instead of the pay-per-token `ANTHROPIC_API_KEY`.
+
+1. Clerk Dashboard → Configure → **OAuth applications** → enable **Dynamic Client Registration** (Claude.ai registers itself; no pasted tokens).
+2. Claude.ai → Settings → Connectors → **Add custom connector** → `https://app.influenci.ai/api/mcp` → sign in with your Influenci account.
+   Claude Code: `claude mcp add --transport http influenci https://app.influenci.ai/api/mcp`.
+3. Settings → Platform apps → **AI** → choose *Claude subscription*. The import workflow then skips the server-side Claude steps and the Overview, Design, Recommend and Posts tabs show "Do this in Claude" with the prompt to run.
+
+Tools: `list_brands`, `get_brand`, `list_posts`, `get_post`, `get_stats`, `list_benchmarks`, `get_seasonality`, `list_recommendations`, `list_scheduled`, `list_actors`, `record_posts` (screenshots transcribed in chat), `record_benchmark_posts`, `save_post_analysis`, `save_insights_summary`, `save_design_system`, `add_recommendations`, `create_post`, `approve_post`, `create_actor_post`, `rescore`. Prompts: `import-screenshots`, `weekly-review`, `analyze-posts`, `extract-design-system`, `recommend-posts`, `write-winner-post`. Every call is scoped to the signed-in user's brands.
 
 ## Stack
 

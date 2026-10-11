@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import { FiLoader, FiZap, FiBookmark, FiX, FiSend, FiExternalLink } from "react-icons/fi";
 import { Section, ScoreBadge, inputCls, btnPrimary, btnGhost, fmt, pct } from "@/components/ui/form";
 import { PLATFORM_INFO } from "@/lib/platforms";
+import { DoInClaude } from "@/components/ui/ai-hint";
+import CardMaker from "./CardMaker";
 
 function RecCard({ r, onAction, busy }) {
   const [edit, setEdit] = useState(false);
@@ -117,8 +119,11 @@ export default function RecommendTab({ actor, reload }) {
           <button onClick={generate} disabled={busy === "generate" || !hasData} className={btnPrimary}>{busy === "generate" ? <FiLoader className="animate-spin" /> : <FiZap />} Generate</button>
         </div>
         {!hasData && <p className="text-[11px] text-amber-600">Import the account history first so recommendations are grounded in real numbers.</p>}
+        <DoInClaude prompt="recommend-posts" brandId={actor.id} what="recommendations with predicted scores land here" />
+        <DoInClaude prompt="write-winner-post" brandId={actor.id} what="write and schedule a post in the brand style" />
         {data.calibration && <p className="text-[11px] text-muted">Past accuracy: {data.calibration.n} published, MAE {data.calibration.mae}, bias {data.calibration.bias}.</p>}
       </Section>
+      <CardMaker actor={actor} onCreated={() => { load(); reload(); }} />
       <div className="flex gap-1 text-xs">
         {[["", "Library"], ["saved", "Saved"], ["used", "Used"], ["dismissed", "Dismissed"]].map(([k, l]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full font-bold ${filter === k ? "bg-primary text-white" : "border border-divider text-muted"}`}>{l}</button>)}
       </div>
