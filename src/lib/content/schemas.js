@@ -167,3 +167,28 @@ export const GiveawayCheckSchema = z.object({
   issues: z.array(z.string()),
   suggestedFix: z.string(),
 });
+
+/* ---------- Screenshot import ---------- */
+
+export const ScreenshotPostSchema = z.object({
+  posts: z.array(
+    z.object({
+      platform: z.enum(["facebook", "instagram", "tiktok", "x", "youtube", "unknown"]),
+      pageName: z.string().describe("Account/page name shown on the post"),
+      postedAt: z.string().describe("ISO 8601 date-time as shown. If no year is visible assume the current year unless that would be in the future. If only a date is visible use 12:00. If the screenshot says 'N days ago' subtract from today."),
+      dateText: z.string().describe("The date/time text exactly as shown, e.g. 'September 27 at 9:00 AM' or '5 days ago'"),
+      caption: z.string().describe("Full visible caption text, including hashtags; note '(See more)' if truncated"),
+      captionTruncated: z.boolean(),
+      likes: z.number().int().min(0).describe("Reactions/likes count"),
+      comments: z.number().int().min(0),
+      shares: z.number().int().min(0),
+      views: z.number().int().min(0).describe("View/play count if shown, else 0"),
+      mediaType: z.enum(["image", "carousel", "video", "reel", "graphic", "text", "link"]).describe("graphic = a designed text/branded card; text = no media"),
+      hasTextOverlay: z.boolean(),
+      overlayText: z.string(),
+      mediaDescription: z.string().describe("One sentence describing what the image/video shows"),
+      isAd: z.boolean().describe("True if labelled Sponsored"),
+      brandReplied: z.boolean().describe("True if the page itself is visible replying in the comments"),
+    })
+  ),
+});

@@ -127,7 +127,7 @@ async function recordChannelPost(t, result) {
   try {
     const post = t.post;
     await prisma.channelPost.upsert({
-      where: { channelId_externalId: { channelId: t.channelId, externalId } },
+      where: { actorId_platform_externalId: { actorId: post.actorId, platform: t.platform, externalId } },
       create: {
         channelId: t.channelId,
         actorId: post.actorId,

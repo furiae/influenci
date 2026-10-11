@@ -321,7 +321,7 @@ model AppSetting {
 /// Influenci published. Carries metrics, a 1-10 score and Claude's analysis.
 model ChannelPost {
   id           String    @id @default(cuid())
-  channelId    String
+  channelId    String?
   actorId      String
   platform     String
   externalId   String
@@ -331,7 +331,7 @@ model ChannelPost {
   mediaUrls    String[]  @default([])
   thumbnailUrl String?   @db.Text
   postedAt     DateTime?
-  source       String    @default("import") // import | influenci
+  source       String    @default("import") // import | influenci | screenshot | manual
   postTargetId String?   @unique
 
   // Metrics (latest)
@@ -367,12 +367,12 @@ model ChannelPost {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  channel    Channel             @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channel    Channel?            @relation(fields: [channelId], references: [id], onDelete: SetNull)
   actor      Actor               @relation(fields: [actorId], references: [id], onDelete: Cascade)
   postTarget PostTarget?         @relation(fields: [postTargetId], references: [id], onDelete: SetNull)
   metrics    ChannelPostMetric[]
 
-  @@unique([channelId, externalId])
+  @@unique([actorId, platform, externalId])
   @@index([actorId, postedAt])
   @@index([actorId, score])
 }

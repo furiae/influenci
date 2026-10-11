@@ -18,6 +18,8 @@ export const EMPTY_BRAND_PROFILE = {
   ctas: [],
   hashtagSets: { core: [], seasonal: [] },
   links: { facebook: "", instagram: "", website: "" },
+  followers: { facebook: null, instagram: null },
+  assets: { logoUrl: "" },
   seasonality: [], // extra brand moments: [{ name, from: "MM-DD", to: "MM-DD", note }]
   notes: "",
 };
@@ -31,6 +33,8 @@ export function mergeBrandProfile(base, patch) {
     ...b,
     hashtagSets: { ...EMPTY_BRAND_PROFILE.hashtagSets, ...(a.hashtagSets || {}), ...(b.hashtagSets || {}) },
     links: { ...EMPTY_BRAND_PROFILE.links, ...(a.links || {}), ...(b.links || {}) },
+    followers: { ...EMPTY_BRAND_PROFILE.followers, ...(a.followers || {}), ...(b.followers || {}) },
+    assets: { ...EMPTY_BRAND_PROFILE.assets, ...(a.assets || {}), ...(b.assets || {}) },
   };
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import toast from "react-hot-toast";
-import { FiLoader, FiExternalLink, FiX, FiZap, FiRefreshCw } from "react-icons/fi";
+import { FiLoader, FiExternalLink, FiX, FiZap, FiRefreshCw, FiUpload } from "react-icons/fi";
 import { PLATFORM_INFO } from "@/lib/platforms";
 import { Section, ScoreBadge, fmt, pct, when, btnPrimary, btnGhost } from "@/components/ui/form";
 
@@ -17,7 +18,7 @@ export function PostCard({ p, onOpen }) {
         <span className="absolute top-2 right-2 text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-black/60 text-white">{p.mediaType}</span>
       </div>
       <div className="p-2 space-y-1 flex-1">
-        <div className="text-[10px] font-bold text-muted flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[p.platform]?.color }} /> {when(p.postedAt)}{p.source === "influenci" ? " · Influenci" : ""}</div>
+        <div className="text-[10px] font-bold text-muted flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[p.platform]?.color }} /> {when(p.postedAt)}{p.source === "influenci" ? " · Influenci" : p.source === "screenshot" ? " · screenshot" : ""}</div>
         <div className="text-[11px] text-foreground line-clamp-2">{p.caption || "(no caption)"}</div>
         <div className="text-[10px] text-muted">{pct(p.engagementRate)} ER · reach {fmt(p.reach)} · {fmt(p.likes)} likes · {fmt(p.comments)} comments{p.shares ? ` · ${fmt(p.shares)} shares` : ""}{p.saves ? ` · ${fmt(p.saves)} saves` : ""}</div>
       </div>
@@ -86,6 +87,42 @@ export function PostDrawer({ actorId, post, onClose, onLike }) {
   );
 }
 
+export function ScreenshotImport({ actor, onDone }) {
+  const fileRef = useRef(null);
+  const [platform, setPlatform] = useState("facebook");
+  const [busy, setBusy] = useState(null);
+  const pick = async (e) => {
+    const files = Array.from(e.target.files || []).slice(0, 40);
+    e.target.value = "";
+    if (!files.length) return;
+    setBusy(`Uploading ${files.length}…`);
+    try {
+      const urls = [];
+      for (const f of files) {
+        const blob = await upload(`screenshots/${actor.id}/${Date.now()}-${f.name}`, f, { access: "public", handleUploadUrl: "/api/upload" });
+        urls.push(blob.url);
+      }
+      setBusy(`Reading ${urls.length} screenshot${urls.length === 1 ? "" : "s"} with Claude…`);
+      const res = await fetch(`/api/accounts/${actor.id}/posts/screenshots`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urls, platform }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Import failed");
+      toast.success(`${d.posts} post${d.posts === 1 ? "" : "s"} recorded${d.errors?.length ? `, ${d.errors.length} screenshot(s) failed` : ""}`);
+      onDone?.();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-bg-page border border-divider rounded-lg px-2 py-2 text-xs"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option></select>
+      <button onClick={() => fileRef.current?.click()} disabled={Boolean(busy)} className={btnPrimary} title="Screenshots of posts (one or several per image). Claude reads the caption, date, likes, comments and shares.">{busy ? <FiLoader className="animate-spin" /> : <FiUpload />} {busy || "Import from screenshots"}</button>
+      <input ref={fileRef} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pick} />
+    </div>
+  );
+}
+
 export default function PostsTab({ actor }) {
   const [data, setData] = useState(null);
   const [filters, setFilters] = useState({ platform: "", format: "", minScore: "", sort: "score", q: "" });
@@ -128,10 +165,11 @@ export default function PostsTab({ actor }) {
           <select value={filters.sort} onChange={set("sort")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm">{SORTS.map(([k, l]) => <option key={k} value={k}>Sort: {l}</option>)}</select>
           <input value={filters.q} onChange={set("q")} placeholder="Search captions" className="flex-1 min-w-[160px] bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm" />
           <span className="text-[11px] text-muted">{data.total} posts</span>
+          <ScreenshotImport actor={actor} onDone={load} />
         </div>
       </Section>
       {data.items.length === 0 ? (
-        <p className="text-xs text-muted text-center py-10">No posts yet. Connect a channel and import its history.</p>
+        <p className="text-xs text-muted text-center py-10">No posts yet. Connect a channel and import its history, or drop screenshots of posts with the button above.</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">{data.items.map((p) => <PostCard key={p.id} p={p} onOpen={setOpen} />)}</div>
       )}
