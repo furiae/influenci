@@ -16,6 +16,7 @@ import { settleRecommendations, computeCalibration } from "@/lib/insights/summar
 import { enforceLimits } from "@/lib/content/limits";
 import { slotsForDay } from "@/lib/scheduler/cadence";
 import { todayIn } from "@/lib/time";
+import { renderCardToBlob, TEMPLATES } from "@/lib/render/cards";
 
 const PlatformEnum = z.enum(["facebook", "instagram", "tiktok", "x", "youtube"]);
 
@@ -259,6 +260,14 @@ export function registerTools(server) {
       const run = await start(renderPostWorkflow, [post.id]);
       await prisma.post.update({ where: { id: post.id }, data: { renderRunId: run.runId } });
       return json({ postId: post.id, planDate, calendar: `/calendar?post=${post.id}` });
+    } catch (err) { return fail(err); }
+  });
+
+  server.registerTool("render_card", { title: "Render brand card", description: `Composite a branded card image for free (no AI, no render credits) from the brand templates: ${Object.entries(TEMPLATES).map(([k, t]) => `${k} (${t.fields.map((f) => f.key + (f.required ? "*" : "")).join(", ")}${t.photo ? ", photoUrl* JPEG/PNG" : ""})`).join("; ")}. Returns the image URL. To post it, call create_post with visualBrief { template, fields, photoUrl } and a caption.`, inputSchema: z.object({ brandId: z.string(), template: z.enum(["winner", "contender", "throwback", "question"]), fields: z.record(z.string(), z.string()).default({}), photoUrl: z.string().optional().describe("https URL of the hunter's photo (JPEG or PNG); required for winner/contender/throwback") }) }, async ({ brandId, template, fields, photoUrl }, extra) => {
+    try {
+      const actor = await brandFor(await mcpUser(extra), brandId);
+      const card = await renderCardToBlob({ actor, template, fields, photoUrl: photoUrl || null });
+      return json({ url: card.url, template: card.template, fields: card.fields, bytes: card.bytes, next: "create_post with visualBrief { template, fields, photoUrl } + caption" });
     } catch (err) { return fail(err); }
   });
 

@@ -25,7 +25,8 @@ Besides AI personas, Influenci manages **real brand accounts** (`/accounts`): co
 - builds a dashboard and printable report (KPIs, reach trend, ER by format, best time to post, Claude's "what's working / do next"),
 - extracts an editable, versioned **design system + caption style** from the top posts and proposes changes as new posts come in,
 - recommends new posts with a predicted score and reach range, grounded in our stats, hunting/fishing competitor benchmarks, the outdoor seasonal calendar and past prediction accuracy,
-- turns a recommendation into a brand-styled image or reel, schedules it, publishes to Instagram/Facebook, and reads the metrics back so predictions get calibrated.
+- turns a recommendation into a brand-styled image or reel, schedules it, publishes to Instagram/Facebook, and reads the metrics back so predictions get calibrated,
+- composites the brand's own card formats (winner, contender, throwback, question) for free from templates (`src/lib/render/templates/apex-card.js`, satori + resvg): Recommend tab → "Make a brand card", MCP `render_card`, or `create_post` with `visualBrief.template`.
 
 Because the Pages are ones you administer, Meta's Standard Access is enough: no App Review is needed. Daily syncs run from the scheduler ticker.
 

@@ -11,6 +11,7 @@ import { copyToBlob } from "@/lib/render/store";
 import { logEvent } from "@/lib/scheduler/status";
 import { PLATFORMS } from "@/lib/platforms";
 import { submitBrandKeyframe, brandMotionPrompt } from "@/lib/render/brand";
+import { renderCardToBlob, wantsCard } from "@/lib/render/cards";
 
 const MAX_KEYFRAME_ATTEMPTS = 3;
 
@@ -32,6 +33,7 @@ async function renderBody(postId) {
   if (!ctx.ok) return { postId, skipped: ctx.reason };
 
   await ensureScript(postId);
+  await compositeCard(postId);
 
   let qa = await currentQa(postId);
   for (let attempt = 0; attempt < MAX_KEYFRAME_ATTEMPTS && !qa.pass; attempt++) {
@@ -116,6 +118,30 @@ async function ensureScript(postId) {
   }
 }
 ensureScript.maxRetries = 3;
+
+/**
+ * Brand card posts (visualBrief.template = winner | contender | throwback |
+ * question) are composited from the brand templates instead of generated:
+ * no provider cost, and the result passes QA by construction.
+ */
+async function compositeCard(postId) {
+  "use step";
+  const post = await loadPost(postId);
+  if (post.actor.kind !== "brand" || !wantsCard(post)) return { skipped: true };
+  if (post.keyframeQa?.pass && post.keyframeUrl) return { cached: true };
+  const brief = post.script.visualBrief;
+  try {
+    const card = await renderCardToBlob({ actor: post.actor, template: brief.template, fields: brief.fields || {}, photoUrl: brief.photoUrl || brief.referenceImages?.[0] || null, pathname: `keyframes/${post.actor.slug || post.actorId}/${postId}-card.png` });
+    const record = { pass: true, score: 1, issues: [], attempts: 1, brand: true, composited: brief.template };
+    await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: card.url, keyframeQa: record } });
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: 0, message: `composited ${brief.template} card`, data: { url: card.url, template: brief.template } });
+    console.log("[RENDER] card composited", postId, brief.template);
+    return record;
+  } catch (err) {
+    throw new FatalError(`card: ${err.message}`);
+  }
+}
+compositeCard.maxRetries = 2;
 
 async function currentQa(postId) {
   "use step";
