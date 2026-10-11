@@ -20,17 +20,44 @@ export function buildBrandImagePrompt(actor, post) {
  * scene with no lettering at all. The headline is composited afterwards with
  * the free photo template, so the words are always right.
  */
-export function cleanBrandImagePrompt(actor, post) {
-  const brief = { ...(post.script?.visualBrief || {}), overlayText: undefined };
-  const base = designSystemToImagePrompt(actor.designSystem, brief) || brief.notes || "";
-  const scene = brief.subject ? "" : ` Scene: ${post.idea || post.hook || "outdoor lifestyle"}.`;
-  return `${base}${scene} Clean photograph with no text, no lettering, no words, no signs, no logos, no watermark; leave the lower third uncluttered for a headline.`.replace(/\s+/g, " ").trim();
+const TEXTY = /\b(text|overlay|headline|sub-?head|kicker|logo|wordmark|typography|font|letter|word|caption|banner|title|sign|label|cta|call to action|poster|graphic|card|template)\b|["“”]/i;
+
+/** Drop every sentence that talks about words on the image; image models paint what they read. */
+export function stripTextTalk(s) {
+  return String(s || "").split(/(?<=[.;!?])\s+/).filter((part) => part && !TEXTY.test(part)).join(" ").trim();
 }
 
-/** The words the post wants on the image, if any. */
+export function cleanBrandImagePrompt(actor, post) {
+  const brief = post.script?.visualBrief || {};
+  const ds = actor.designSystem || {};
+  const subject = stripTextTalk(brief.subject) || stripTextTalk(post.idea) || stripTextTalk(post.hook) || "outdoor hunting lifestyle";
+  const composition = stripTextTalk(brief.composition);
+  const notes = stripTextTalk(brief.notes);
+  const styles = (ds.imagery?.styles || []).map(stripTextTalk).filter(Boolean).slice(0, 3).join(", ");
+  const mood = (ds.palette || []).slice(0, 2).map((p) => p.hex).join(" and ");
+  return [
+    `Photorealistic documentary photograph of ${subject}.`,
+    composition ? `${composition}.` : "",
+    styles ? `Look: ${styles}.` : "",
+    mood ? `Colour mood: deep ${mood} accents, dark moody background.` : "",
+    notes ? `${notes}.` : "",
+    "Natural light, sharp focus, real camera. Absolutely no text, no letters, no words, no numbers, no typography, no logos, no signs, no banners, no stickers, no borders, no graphic design elements, no watermark. Plain photograph only.",
+  ].filter(Boolean).join(" ").replace(/\.\./g, ".").replace(/\s+/g, " ").trim();
+}
+
+/** Satori has no colour-emoji font; drop emoji and symbol glyphs before compositing. */
+export function stripEmoji(s) {
+  return String(s || "").replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{1F3FB}-\u{1F3FF}]/gu, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The words to set on the image: the brief's overlay text, else the post's
+ * hook. Brand photos always carry a headline, so the composited card never
+ * comes out blank.
+ */
 export function brandOverlayText(post) {
   const s = post.script || {};
-  return String(s.overlayText || s.visualBrief?.overlayText || "").trim();
+  return stripEmoji(s.overlayText || s.visualBrief?.overlayText || post.hook || "");
 }
 
 export function brandAspect(post) {

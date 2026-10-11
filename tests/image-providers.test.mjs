@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import fs from "node:fs";
 import { aspectToSize, sniffImageType, normalizeImage, generateWithGpuEndpoint, splitOverlayText, IMAGE_PROVIDERS } from "../src/lib/render/image-providers.js";
-import { cleanBrandImagePrompt, brandOverlayText } from "../src/lib/render/brand.js";
+import { cleanBrandImagePrompt, brandOverlayText, stripTextTalk, stripEmoji } from "../src/lib/render/brand.js";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
@@ -14,13 +14,18 @@ describe("image providers", () => {
   });
 
   it("asks open-weight generators for a text-free photo and composites the words afterwards", () => {
-    const actor = { name: "Apex", designSystem: { palette: [{ hex: "#C8102E", role: "primary" }], imagery: { styles: ["deer camp at dusk"] } } };
-    const post = { idea: "deer camp", script: { keyframePrompt: 'Text overlay reads exactly: "WHO\'S IN YOUR DEER CAMP?"', overlayText: "Who's in your deer camp? Tag them.", visualBrief: { subject: "a cabin at dusk", overlayText: "Who's in your deer camp? Tag them." } } };
+    const actor = { name: "Apex", designSystem: { palette: [{ hex: "#C8102E", role: "primary" }], imagery: { styles: ["deer camp at dusk", "bold headline over photo"] }, layoutPatterns: ["red band with white headline"], logoPlacement: "bottom right", typography: { overlayStyle: "Oswald caps" } } };
+    const post = { idea: "deer camp", hook: "Who's In Your Deer Camp This Season? Tag Them Below 👇🦌", script: { keyframePrompt: 'Text overlay reads exactly: "WHO\'S IN YOUR DEER CAMP?"', overlayText: "", visualBrief: { subject: "a cabin at dusk", composition: "cabin centred. Bold headline WHO'S IN YOUR DEER CAMP across the top; logo bottom right", notes: 'Red band reading "TAG THEM". Warm porch light.' } } };
     const prompt = cleanBrandImagePrompt(actor, post);
-    expect(prompt).not.toMatch(/reads exactly|DEER CAMP/);
-    expect(prompt).toMatch(/no text, no lettering/);
+    expect(prompt.replace(/Absolutely no text.*$/, "")).not.toMatch(/reads exactly|WHO'S IN YOUR|headline|logo|TAG THEM|band|Oswald/i);
     expect(prompt).toMatch(/cabin at dusk/);
-    expect(brandOverlayText(post)).toBe("Who's in your deer camp? Tag them.");
+    expect(prompt).toMatch(/cabin centred/);
+    expect(prompt).toMatch(/Warm porch light/);
+    expect(prompt).toMatch(/no text, no letters, no words/);
+    expect(stripTextTalk("A buck at dawn. Text overlay reads WOW. Frost on the grass.")).toBe("A buck at dawn. Frost on the grass.");
+    expect(stripEmoji("Tag Them Below 👇🦌 now")).toBe("Tag Them Below now");
+    expect(brandOverlayText(post)).toBe("Who's In Your Deer Camp This Season? Tag Them Below");
+    expect(brandOverlayText({ hook: "x", script: { overlayText: "Shoot or pass? 🦌" } })).toBe("Shoot or pass?");
     expect(splitOverlayText("")).toBeNull();
     expect(splitOverlayText("Who's in your deer camp?")).toEqual({ headline: "Who's in your deer camp?" });
     expect(splitOverlayText("Who's in your deer camp this season? Tag them below so they see the love and sign up today")).toEqual({ headline: "Who's in your deer camp this season?", subhead: "Tag them below so they see the love and sign up today" });
