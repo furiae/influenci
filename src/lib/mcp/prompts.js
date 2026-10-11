@@ -92,7 +92,7 @@ Call add_recommendations with brandId "${actor.id}" and the list: each { title, 
 
 Write a ${kind} post for ${hunter} (${state}${place ? `, ${place} place` : ""}${prize ? `, ${prize}` : ""}). Match the account's best-performing ${kind} captions: Title Case Every Word, congratulate by name, one line of pride, then a CTA to enter, and END WITH A QUESTION that invites comments (the data shows question posts get 5-10× the comments). Keep it under 60 words.
 
-Then call create_post with brandId "${actor.id}", platforms ["facebook","instagram"], format "image", the caption, and visualBrief { subject: "${hunter} with the buck", template: "${kind}", fields: { name: "${hunter}", state: "${state}"${place ? `, place: "${place}"` : ""}${prize ? `, prize: "${prize}"` : ""}, year: "${new Date().getFullYear()}" }${photoUrl ? `, photoUrl: "${photoUrl}"` : ""} }. Report the calendar link.`);
+Then call create_post (preview: true) with brandId "${actor.id}", platforms ["facebook","instagram"], format "image", the caption, and visualBrief { subject: "${hunter} with the buck", template: "${kind}", fields: { name: "${hunter}", state: "${state}"${place ? `, place: "${place}"` : ""}${prize ? `, prize: "${prize}"` : ""}, year: "${new Date().getFullYear()}" }${photoUrl ? `, photoUrl: "${photoUrl}"` : ""} }. Poll get_post until keyframeUrl is set, show the user the image and caption, and only when they approve call schedule_post with the platforms and time they want. Report the calendar link.`);
   });
 }
 
