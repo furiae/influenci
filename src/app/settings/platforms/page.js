@@ -8,11 +8,12 @@ import { useMe } from "@/lib/useMe";
 
 const CHECKLIST = {
   meta: [
-    "Create a Business-type app at developers.facebook.com and add Facebook Login for Business + Instagram products",
-    "Add the two redirect URIs below under Facebook Login → Settings → Valid OAuth Redirect URIs",
-    "Make the Facebook user that owns the 7 Pages an Admin of the app (App Roles)",
-    "Each actor: a Facebook Page + an Instagram Creator/Business account linked to that Page",
-    "Only file App Review if publishing is blocked at Standard Access",
+    "Create a Business-type app at developers.facebook.com and add the Facebook Login for Business + Instagram products",
+    "Add the two redirect URIs below under Facebook Login for Business → Settings → Valid OAuth Redirect URIs",
+    "Optional: create a Login Configuration (Facebook Login for Business → Configurations) with the Page + Instagram permissions and paste its config ID below",
+    "Make the Facebook user that admins the brand Pages an Admin of the app (App Roles); Standard Access covers Pages you manage, so no App Review is needed for your own brands",
+    "Each brand: a Facebook Page + an Instagram Professional (Business/Creator) account linked to that Page (Page settings → Linked accounts)",
+    "Only file App Review + Business Verification if you later connect Pages you do not administer",
   ],
   tiktok: [
     "Create an app at developers.tiktok.com, add Login Kit + Content Posting API (Direct Post)",
@@ -56,6 +57,7 @@ function AppCard({ app, onSaved }) {
   const [clientId, setClientId] = useState(app.clientId || "");
   const [secret, setSecret] = useState("");
   const [review, setReview] = useState(app.reviewStatus || {});
+  const [extra, setExtra] = useState(app.extra || {});
   const [saving, setSaving] = useState(false);
   const steps = CHECKLIST[app.key] || [];
 
@@ -65,7 +67,7 @@ function AppCard({ app, onSaved }) {
       const res = await fetch("/api/settings/platforms", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appKey: app.key, clientId, clientSecret: secret || undefined, reviewStatus: review }),
+        body: JSON.stringify({ appKey: app.key, clientId, clientSecret: secret || undefined, reviewStatus: review, extra }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Save failed");
@@ -111,6 +113,13 @@ function AppCard({ app, onSaved }) {
           <input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={app.hasSecret ? "•••••••• (leave blank to keep)" : "paste secret"} className="w-full bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm" />
         </label>
       </div>
+
+      {app.key === "meta" && (
+        <label className="block space-y-1">
+          <span className="text-[11px] uppercase font-bold text-muted tracking-wider">Login configuration ID (optional)</span>
+          <input value={extra.configId || ""} onChange={(e) => setExtra({ ...extra, configId: e.target.value.trim() })} placeholder="From Facebook Login for Business → Configurations" className="w-full bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm" />
+        </label>
+      )}
 
       <div className="space-y-1.5">
         <div className="text-[11px] uppercase font-bold text-muted tracking-wider">Setup checklist</div>

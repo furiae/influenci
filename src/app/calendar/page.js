@@ -117,7 +117,7 @@ function PostDrawer({ postId, onClose, onChanged }) {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-divider">
         <div className="flex items-center gap-3">
-          <img src={post.actor.imageUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
+          {post.actor.imageUrl ? <img src={post.actor.imageUrl} alt="" className="w-9 h-9 rounded-full object-cover" /> : <div className="w-9 h-9 rounded-full bg-glass-hover" />}
           <div>
             <div className="text-sm font-black text-foreground">{post.actor.name} · {post.planDate}</div>
             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${STATUS_COLORS[post.status]}`}>{post.status}</span>

@@ -4,6 +4,7 @@ import { schedulerTickerWorkflow } from "@/workflows/scheduler-ticker";
 import { runPlanner } from "./planner";
 import { runPublisher } from "./publisher";
 import { runPoller } from "./poller";
+import { runChannelSync } from "@/lib/insights/sync";
 
 const KEY = "scheduler.ticker";
 export const PLANNER_HOUR_UTC = 9; // 05:00 New York in summer, 04:00 in winter
@@ -20,7 +21,7 @@ async function setTickerState(patch) {
   return value;
 }
 
-/** One tick: planner once per UTC day after PLANNER_HOUR_UTC, publisher and poller every time. */
+/** One tick: planner once per UTC day after PLANNER_HOUR_UTC; publisher, poller and brand-channel sync every time. */
 export async function tickOnce() {
   const now = new Date();
   const state = await getTickerState();
@@ -32,6 +33,7 @@ export async function tickOnce() {
   }
   summary.publisher = await runPublisher({ now });
   summary.poller = await runPoller({ now });
+  summary.channelSync = await runChannelSync({ now }).catch((err) => ({ error: String(err?.message || err) }));
   await setTickerState({ lastTickAt: now.toISOString() });
   return summary;
 }

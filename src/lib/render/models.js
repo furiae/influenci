@@ -12,12 +12,18 @@ export const RENDER = {
     keyframe: { slug: "google/nano-banana-pro/edit-multi", cents: 7 },
     video: { slug: "alibaba/wan-2.6/image-to-video-flash", centsPer5s: 12.5, soundMultiplier: 2, durations: [5, 10] },
   },
+  brand: {
+    keyframe: { slug: "google/nano-banana-pro/text-to-image", cents: 7 },
+    keyframeEdit: { slug: "google/nano-banana-pro/edit-multi", cents: 7 },
+    video: { slug: "alibaba/wan-2.6/image-to-video-flash", centsPer5s: 12.5, soundMultiplier: 2, durations: [5, 10] },
+  },
   references: { slug: "google/nano-banana-pro/edit-multi", cents: 7 },
   element: { slug: "kwaivgi/kling-elements-advanced", cents: 1 },
   lora: { slug: "wavespeed-ai/flux-dev-lora-trainer", cents: 100 },
 };
 
 export function renderConfig(actor) {
+  if (actor.kind === "brand") return RENDER.brand;
   return actor.kind === "pet" ? RENDER.pet : RENDER.human;
 }
 
@@ -28,6 +34,7 @@ export function videoCents(actor, { lengthSec = 5, audio = true } = {}) {
 
 export function keyframeCents(actor) {
   const c = renderConfig(actor);
+  if (actor.kind === "brand") return c.keyframe.cents;
   return actor.kind === "pet" && actor.loraUrl ? c.keyframeLora.cents : c.keyframe.cents;
 }
 

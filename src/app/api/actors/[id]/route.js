@@ -21,7 +21,8 @@ export async function GET(req, { params }) {
     },
   });
   if (!actor) return new NextResponse("Not Found", { status: 404 });
-  return NextResponse.json({ ...actor, cadenceResolved: resolveCadence(actor) });
+  const channels = actor.channels.map((c) => ({ ...c, config: c.config ? Object.fromEntries(Object.entries(c.config).filter(([k]) => !/token/i.test(k))) : c.config }));
+  return NextResponse.json({ ...actor, channels, cadenceResolved: resolveCadence(actor) });
 }
 
 export async function PATCH(req, { params }) {

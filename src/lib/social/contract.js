@@ -21,7 +21,18 @@
  *   publishImage?({ channel, token, imageUrl, target, post }) -> same shape
  *   fetchStatus({ channel, token, target }) -> { status: "published"|"processing"|"failed", externalId?, url?, error? }
  *   revoke?({ channel, token })
+ *
+ *   // Optional read-side methods (brand accounts: history import + analytics)
+ *   listPosts?({ channel, token, cursor?, since? }) ->
+ *     { posts: [{ externalId, url, caption, mediaType, mediaUrls[], thumbnailUrl, postedAt, likes, comments, shares, views, raw }], nextCursor }
+ *   fetchPostMetrics?({ channel, token, post }) ->
+ *     { reach?, impressions?, clicks?, saves?, shares?, views?, likes?, comments?, videoAvgWatchSec?, reactionsByType?, raw, unavailable? }
+ *   fetchAccountInsights?({ channel, token, since, until }) ->
+ *     [{ date: "YYYY-MM-DD", followers?, newFollowers?, reach?, impressions?, profileViews?, websiteClicks?, raw }]
  * }
+ *
+ * accounts[] may also carry `platform` (one Meta login yields a facebook and an
+ * instagram channel) and `expiresAt` (per-account token expiry; null = never).
  */
 
 export class PublishError extends Error {

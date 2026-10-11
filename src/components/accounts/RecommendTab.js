@@ -1,0 +1,128 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import { FiLoader, FiZap, FiBookmark, FiX, FiSend, FiExternalLink } from "react-icons/fi";
+import { Section, ScoreBadge, inputCls, btnPrimary, btnGhost, fmt, pct } from "@/components/ui/form";
+import { PLATFORM_INFO } from "@/lib/platforms";
+
+function RecCard({ r, onAction, busy }) {
+  const [edit, setEdit] = useState(false);
+  const [caption, setCaption] = useState(r.caption || "");
+  const [platforms, setPlatforms] = useState(r.platforms);
+  const [when, setWhen] = useState("");
+  const toggle = (p) => setPlatforms((x) => (x.includes(p) ? x.filter((y) => y !== p) : [...x, p]));
+  return (
+    <div className={`rounded-xl border bg-bg-card p-4 space-y-3 ${r.status === "used" ? "border-emerald-500/40" : r.status === "saved" ? "border-primary/40" : "border-divider"}`}>
+      <div className="flex items-start gap-3">
+        <div className="text-center"><ScoreBadge score={r.predictedScore} size="lg" /><div className="text-[9px] uppercase font-bold text-muted mt-1">predicted</div></div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-black text-foreground">{r.title}</div>
+          <div className="text-[11px] text-muted flex flex-wrap gap-x-3">
+            <span>{r.format}</span>
+            {r.platforms.map((p) => <span key={p} className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[p]?.color }} />{PLATFORM_INFO[p]?.label}</span>)}
+            <span>reach {fmt(r.predictedReachLow)}–{fmt(r.predictedReachHigh)}</span>
+            <span>ER {pct(r.predictedEngagementRate, 2)}</span>
+            <span>confidence {Math.round((r.confidence || 0) * 100)}%</span>
+            {r.bestTime && <span>best: {r.bestTime.weekday} {r.bestTime.hourLocal}:00</span>}
+            {r.basedOn?.seasonalHook && <span className="text-amber-600 font-bold">{r.basedOn.seasonalHook}</span>}
+          </div>
+        </div>
+        {r.status === "used" && r.post && <Link href={`/calendar?post=${r.post.id}`} className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">post {r.post.status} <FiExternalLink /></Link>}
+        {r.actualScore != null && <div className="text-center"><ScoreBadge score={r.actualScore} /><div className="text-[9px] uppercase font-bold text-muted mt-1">actual</div></div>}
+      </div>
+      <p className="text-xs text-foreground">{r.concept}</p>
+      <details className="text-xs">
+        <summary className="cursor-pointer font-bold text-primary">Caption, visual brief and rationale</summary>
+        <div className="mt-2 space-y-2">
+          {edit ? <textarea rows={6} value={caption} onChange={(e) => setCaption(e.target.value)} className={inputCls} /> : <pre className="whitespace-pre-wrap font-sans bg-bg-page border border-divider rounded-lg p-3 text-foreground">{r.caption}{r.hashtags?.length ? `\n\n${r.hashtags.map((h) => `#${h}`).join(" ")}` : ""}</pre>}
+          {r.visualBrief && <p className="text-muted"><strong className="text-foreground">Visual:</strong> {r.visualBrief.subject}. {r.visualBrief.composition}. {r.visualBrief.overlayText ? `Overlay: “${r.visualBrief.overlayText}”. ` : ""}{r.visualBrief.notes}</p>}
+          <p className="text-muted"><strong className="text-foreground">Why:</strong> {r.rationale}</p>
+          {(r.basedOn?.ownPosts?.length || r.basedOn?.benchmarks?.length) ? <p className="text-[11px] text-muted">Based on {r.basedOn.ownPosts?.length || 0} of our posts and {r.basedOn.benchmarks?.length || 0} competitor posts.</p> : null}
+        </div>
+      </details>
+      {r.status !== "used" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {["instagram", "facebook"].map((p) => <label key={p} className="flex items-center gap-1 text-[11px] text-foreground"><input type="checkbox" checked={platforms.includes(p)} onChange={() => toggle(p)} className="accent-primary" />{PLATFORM_INFO[p].label}</label>)}
+          <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="bg-bg-page border border-divider rounded px-2 py-1 text-[11px]" title="Leave empty to use the best time" />
+          <div className="flex-1" />
+          {edit ? <button onClick={() => { onAction(r, "save-edit", { caption }); setEdit(false); }} className={btnGhost}>Save caption</button> : <button onClick={() => setEdit(true)} className={btnGhost}>Edit caption</button>}
+          <button onClick={() => onAction(r, r.status === "saved" ? "unsave" : "save")} disabled={busy === r.id} className={btnGhost}><FiBookmark /> {r.status === "saved" ? "Saved" : "Save"}</button>
+          <button onClick={() => onAction(r, "dismiss")} disabled={busy === r.id} className={btnGhost}><FiX /> Dismiss</button>
+          <button onClick={() => onAction(r, "create", { platforms, date: when ? new Date(when).toISOString() : undefined })} disabled={busy === r.id || !platforms.length} className={btnPrimary}>{busy === r.id ? <FiLoader className="animate-spin" /> : <FiSend />} Create post</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function RecommendTab({ actor, reload }) {
+  const [data, setData] = useState(null);
+  const [busy, setBusy] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [focus, setFocus] = useState("");
+  const [count, setCount] = useState(10);
+  const load = () => fetch(`/api/accounts/${actor.id}/recommendations${filter ? `?status=${filter}` : ""}`).then((r) => (r.ok ? r.json() : null)).then(setData);
+  useEffect(() => { load(); }, [actor.id, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const generate = async () => {
+    setBusy("generate");
+    try {
+      const res = await fetch(`/api/accounts/${actor.id}/recommendations`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ count, focus }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      toast.success(`${d.recommendations.length} recommendations added`);
+      setFocus("");
+      await load();
+      reload();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onAction = async (r, action, extra = {}) => {
+    setBusy(r.id);
+    try {
+      let res;
+      if (action === "create") res = await fetch(`/api/recommendations/${r.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create-post", ...extra }) });
+      else if (action === "save-edit") res = await fetch(`/api/recommendations/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(extra) });
+      else res = await fetch(`/api/recommendations/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action === "save" ? "saved" : action === "unsave" ? "suggested" : "dismissed" }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      if (action === "create") {
+        const issues = Object.values(d.compliance || {}).flatMap((c) => c.issues || []);
+        toast.success(issues.length ? `Post created as a draft; compliance notes: ${issues[0]}` : "Post created; rendering now. Approve it in the calendar.");
+      }
+      await load();
+      reload();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!data) return <div className="py-16 flex justify-center"><FiLoader className="animate-spin text-primary" /></div>;
+  const hasData = actor._count.channelPosts > 0;
+
+  return (
+    <div className="space-y-4">
+      <Section title="Recommended posts" hint="Claude studies our top and bottom posts, the competitors' best posts, the next 30 days of seasonal moments and its own past prediction accuracy, then proposes posts with a predicted 1–10 score and reach range.">
+        <div className="flex flex-wrap gap-2 items-center">
+          <input value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Optional focus, e.g. 'turkey season launch', 'reels only', 'winner announcements'" className="flex-1 min-w-[240px] bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm" />
+          <select value={count} onChange={(e) => setCount(Number(e.target.value))} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm">{[5, 10, 15].map((n) => <option key={n} value={n}>{n} ideas</option>)}</select>
+          <button onClick={generate} disabled={busy === "generate" || !hasData} className={btnPrimary}>{busy === "generate" ? <FiLoader className="animate-spin" /> : <FiZap />} Generate</button>
+        </div>
+        {!hasData && <p className="text-[11px] text-amber-600">Import the account history first so recommendations are grounded in real numbers.</p>}
+        {data.calibration && <p className="text-[11px] text-muted">Past accuracy: {data.calibration.n} published, MAE {data.calibration.mae}, bias {data.calibration.bias}.</p>}
+      </Section>
+      <div className="flex gap-1 text-xs">
+        {[["", "Library"], ["saved", "Saved"], ["used", "Used"], ["dismissed", "Dismissed"]].map(([k, l]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full font-bold ${filter === k ? "bg-primary text-white" : "border border-divider text-muted"}`}>{l}</button>)}
+      </div>
+      {data.items.length === 0 ? <p className="text-xs text-muted text-center py-10">Nothing here yet.</p> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{data.items.map((r) => <RecCard key={r.id} r={r} onAction={onAction} busy={busy} />)}</div>}
+    </div>
+  );
+}

@@ -54,10 +54,11 @@ Rules per platform:
 - youtube: title under 60 characters with curiosity, description 2-4 lines with the hook first, 5-8 hashtags.
 - pinterest: keyword-rich searchable title under 90 characters and a 1-3 sentence description, 3-5 hashtags.
 - x: under 240 characters, no hashtags needed, no links.
-Do not include the AI disclosure yourself; the system appends "(${bible.aiDisclosure})".`;
+${actor.kind === "brand" ? "This is a real brand account: no AI disclosure, no mention of AI." : `Do not include the AI disclosure yourself; the system appends "(${bible.aiDisclosure})".`}`;
   const { data, usage } = await generateStructured({ system, user, schema: CaptionsSchema, effort: "medium" });
   const variants = {};
-  for (const p of platforms) variants[p] = enforceLimits(p, data[p], bible.aiDisclosure);
+  const disclosure = actor.kind === "brand" ? null : bible.aiDisclosure;
+  for (const p of platforms) variants[p] = enforceLimits(p, data[p], disclosure);
   return { variants, raw: data, costCents: usageCents(usage) };
 }
 

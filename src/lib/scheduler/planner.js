@@ -80,6 +80,7 @@ export async function runPlanner({ userId = null, dayOffset = 1 } = {}) {
   const results = [];
   for (const actor of actors) {
     if (!actor.imageUrl) continue;
+    if (actor.kind === "brand" && !actor.cadence?.autoPlan) continue; // brand posts come from recommendations unless opted in
     const today = todayIn(actor.timezone || "America/New_York");
     const days = [addDays(today, dayOffset)];
     if (dayOffset > 0) days.unshift(today);
