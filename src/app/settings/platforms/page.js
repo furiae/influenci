@@ -140,8 +140,8 @@ function AppCard({ app, onSaved }) {
 }
 
 const AI_STEPS = [
-  "Clerk Dashboard → Configure → OAuth applications → enable Dynamic Client Registration (Claude.ai registers itself as a client)",
-  "Claude.ai → Settings → Connectors → Add custom connector → paste the connector URL below → sign in with your Influenci account",
+  "Clerk Dashboard → pick the environment this site actually runs on (Development if the site's key starts with pk_test, else Production) → Configure → Developers → OAuth applications → Settings → turn ON 'Publish DCR support'; leave 'Publish CIMD support' OFF (Clerk cannot fetch Claude's identity document and the sign-in fails with invalid_client)",
+  "Claude.ai → Settings → Connectors → Add custom connector → paste the connector URL below exactly (no trailing dot) → Authentication 'Sign in now', OAuth client 'Register automatically' → Add → Connect → sign in with your Influenci account",
   "Claude Code: run the command below once; Claude Desktop uses the same URL under Settings → Connectors",
   "In Claude, open the Influenci connector's prompts (import-screenshots, weekly-review, recommend-posts, extract-design-system, write-winner-post) and pick a brand",
 ];
