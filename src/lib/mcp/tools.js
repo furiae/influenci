@@ -80,7 +80,12 @@ export function registerTools(server) {
     try {
       const user = await mcpUser(extra);
       const p = await prisma.channelPost.findFirst({ where: { id: postId, actor: { userId: user.id } }, include: { metrics: { orderBy: { capturedAt: "asc" }, take: 60 } } });
-      if (!p) return fail("Post not found");
+      if (!p) {
+        // Not an imported post: maybe a calendar post (preview / draft / scheduled).
+        const cal = await prisma.post.findFirst({ where: { id: postId, userId: user.id }, include: { targets: { select: { platform: true, status: true, scheduledAt: true, url: true } } } });
+        if (!cal) return fail("Post not found");
+        return json({ kind: "calendar", id: cal.id, status: cal.status, preview: Boolean(cal.script?.preview), planDate: cal.planDate, mediaType: cal.mediaType, hook: cal.hook, caption: cal.idea, keyframeUrl: cal.keyframeUrl, videoUrl: cal.videoUrl, renderError: cal.renderError, targets: cal.targets, recommendationId: cal.script?.recommendationId || null });
+      }
       return json({ ...compact(p), caption: p.caption, scoreBreakdown: p.scoreBreakdown, analysis: p.analysis, hashtags: p.hashtags, raw: p.raw, metrics: p.metrics });
     } catch (err) { return fail(err); }
   });
@@ -222,7 +227,7 @@ export function registerTools(server) {
         rec = await prisma.recommendation.update({ where: { id: rec.id }, data: { visualBrief: { ...(rec.visualBrief || {}), ...args.visualBrief } } });
       }
       const post = await createPostFromRecommendation(rec, { platforms: args.platforms, date: args.scheduledAt, referenceImages: args.referenceImages || [], userId: user.id, preview: args.preview !== false });
-      if (args.preview !== false) return json({ postId: post.id, recommendationId: rec.id, status: post.status, preview: true, next: "Poll get_post until keyframeUrl/videoUrl is set, show it to the user, then schedule_post or discard_preview", compliance: post.compliance });
+      if (args.preview !== false) return json({ postId: post.id, recommendationId: rec.id, status: post.status, preview: true, next: "Poll get_post (or list_scheduled) until keyframeUrl/videoUrl is set, show it to the user, then schedule_post or discard_preview", compliance: post.compliance });
       return json({ postId: post.id, status: post.status, planDate: post.planDate, targets: post.targets.map((t) => ({ platform: t.platform, scheduledAt: t.scheduledAt })), calendar: `/calendar?post=${post.id}`, compliance: post.compliance });
     } catch (err) { return fail(err); }
   });

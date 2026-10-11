@@ -73,9 +73,9 @@ function token() {
   return process.env.HF_TOKEN || null;
 }
 
-async function gradioCall(host, endpoint, argValues) {
+export async function gradioCall(host, endpoint, argValues, authToken = token()) {
   const headers = { "Content-Type": "application/json" };
-  const t = token();
+  const t = authToken;
   if (t) headers.Authorization = `Bearer ${t}`;
 
   const submit = await fetch(`${host}/gradio_api/call${endpoint.fn}`, {

@@ -45,6 +45,18 @@ Influenci is also a remote **MCP server** at `/api/mcp`, so Claude.ai, Claude De
 
 Tools: `list_brands`, `get_brand`, `list_posts`, `get_post`, `get_stats`, `list_benchmarks`, `get_seasonality`, `list_recommendations`, `list_scheduled`, `list_actors`, `record_posts` (screenshots transcribed in chat), `record_benchmark_posts`, `save_post_analysis`, `save_insights_summary`, `save_design_system`, `add_recommendations`, `create_post`, `approve_post`, `create_actor_post`, `rescore`. Prompts: `import-screenshots`, `weekly-review`, `analyze-posts`, `extract-design-system`, `recommend-posts`, `write-winner-post`. Every call is scoped to the signed-in user's brands.
 
+## Images for free
+
+Branded cards (winner, contender, throwback, question, photo) and Claude-designed SVGs are composited on the server with satori + resvg, so they never cost anything. Photo-style images behind other posts come from the **image generator** chosen under Settings → Platform apps → AI → *Image generator*:
+
+| Provider | Model | Cost | Notes |
+|---|---|---|---|
+| Hugging Face ZeroGPU (default) | FLUX.1 [schnell], Apache 2.0 | free | Public Space, shared daily quota, can queue for minutes. A free `HF_TOKEN` (or a token pasted in Settings) gives the account its own quota. |
+| Your serverless GPU | FLUX.1 [schnell] on an endpoint you deploy | free inside the host's allowance | `scripts/modal_flux_schnell.py` is a ready Modal app: `modal secret create influenci-image IMAGE_GPU_TOKEN=…`, `modal deploy scripts/modal_flux_schnell.py`, paste the printed URL and token. Any endpoint that accepts `POST { prompt, negative_prompt, width, height, seed, steps }` with a bearer token and returns an image body or `{ image: "<base64>", mime }` works. |
+| Wavespeed | google/nano-banana-pro | about 7¢ per image | Best quality and the only one that can edit from reference photos. Needs `WAVESPEED_API_KEY` and credits. |
+
+Outputs are normalised to JPEG/PNG (Spaces return WebP) and stored on Blob. Persona actors keep using Wavespeed because identity editing needs the reference photo; video clips always render on Wavespeed.
+
 ## Stack
 
 - Next.js 16 App Router, React 19, Tailwind v4

@@ -193,9 +193,128 @@ function AiCard() {
       <div className="space-y-1.5">
         <div className="text-[11px] uppercase font-bold text-muted tracking-wider">Setup</div>
         {AI_STEPS.map((s, i) => <p key={i} className="text-xs text-foreground">{i + 1}. {s}</p>)}
-        <p className="text-[11px] text-muted">Image and video renders still use Wavespeed; branded cards (winner, contender, throwback, question) render for free with the built-in templates.</p>
       </div>
+      {ai.image && <ImageGeneratorCard image={ai.image} onSaved={(d) => { setAi(d); invalidateAiMode(); }} />}
     </section>
+  );
+}
+
+const GPU_STEPS = [
+  "pip install modal && modal setup (free account, no card needed for the monthly allowance)",
+  "modal secret create influenci-image IMAGE_GPU_TOKEN=<a long random string>",
+  "modal deploy scripts/modal_flux_schnell.py → copy the https://…modal.run URL it prints",
+  "Paste that URL and the same token below, pick 'Your serverless GPU', Save",
+];
+
+/**
+ * Which generator draws brand keyframes (photo-style images behind a post).
+ * Cards and designed SVGs never use it; they composite for free.
+ */
+function ImageGeneratorCard({ image, onSaved }) {
+  const [provider, setProvider] = useState(image.provider);
+  const [hfToken, setHfToken] = useState("");
+  const [gpuEndpoint, setGpuEndpoint] = useState(image.gpuEndpoint || "");
+  const [gpuToken, setGpuToken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const current = image.providers.find((p) => p.id === provider);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = { provider, gpuEndpoint };
+      if (hfToken) payload.hfToken = hfToken;
+      if (gpuToken) payload.gpuToken = gpuToken;
+      const res = await fetch("/api/settings/ai", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: payload }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Save failed");
+      setHfToken("");
+      setGpuToken("");
+      onSaved(d);
+      toast.success(`Images: ${d.image.providers.find((p) => p.id === d.image.provider)?.label || d.image.provider}`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clearToken = async (field) => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings/ai", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: { [field]: "" } }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      onSaved(d);
+      toast.success("Token removed");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const input = "w-full bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm";
+  const label = "text-[11px] uppercase font-bold text-muted tracking-wider";
+  return (
+    <div className="rounded-lg border border-divider p-4 space-y-3">
+      <div>
+        <h3 className="text-xs font-black text-foreground">Image generator</h3>
+        <p className="text-[11px] text-muted">Draws the photo-style image behind a post when there is no template or SVG. Branded cards (winner, contender, throwback, question, photo) and Claude-designed SVGs always render for free. Video clips still render on Wavespeed.</p>
+      </div>
+      <label className="block space-y-1">
+        <span className={label}>Provider</span>
+        <select value={provider} onChange={(e) => setProvider(e.target.value)} className={input}>
+          {image.providers.map((p) => (
+            <option key={p.id} value={p.id} disabled={p.id === "wavespeed" && !image.hasWavespeedKey}>
+              {p.label}{p.id === "wavespeed" && !image.hasWavespeedKey ? " — WAVESPEED_API_KEY not set" : ""}
+            </option>
+          ))}
+        </select>
+        {current && <p className="text-[11px] text-muted">{current.description}</p>}
+      </label>
+
+      {provider === "zerogpu" && (
+        <label className="block space-y-1">
+          <span className={label}>Hugging Face token (optional) {image.hasHfToken && <span className="text-emerald-600 normal-case font-semibold">(set)</span>}</span>
+          <div className="flex items-center gap-2">
+            <input type="password" value={hfToken} onChange={(e) => setHfToken(e.target.value)} placeholder={image.hasHfToken ? "•••••••• (leave blank to keep)" : "hf_… from huggingface.co/settings/tokens (Read)"} className={input} />
+            {image.hasHfToken && <button type="button" onClick={() => clearToken("hfToken")} disabled={saving} className="text-[11px] font-bold text-muted hover:text-rose-500 whitespace-nowrap">Remove</button>}
+          </div>
+          <p className="text-[11px] text-muted">Without a token the Space runs on the anonymous quota, which can be exhausted by mid-day. A free token gives the account its own quota; a PRO account ($9/mo) gets about 25 minutes of GPU a day.</p>
+        </label>
+      )}
+
+      {provider === "gpu" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="block space-y-1">
+              <span className={label}>Endpoint URL</span>
+              <input value={gpuEndpoint} onChange={(e) => setGpuEndpoint(e.target.value.trim())} placeholder="https://…modal.run" className={input} />
+            </label>
+            <label className="block space-y-1">
+              <span className={label}>Bearer token {image.hasGpuToken && <span className="text-emerald-600 normal-case font-semibold">(set)</span>}</span>
+              <div className="flex items-center gap-2">
+                <input type="password" value={gpuToken} onChange={(e) => setGpuToken(e.target.value)} placeholder={image.hasGpuToken ? "•••••••• (leave blank to keep)" : "IMAGE_GPU_TOKEN"} className={input} />
+                {image.hasGpuToken && <button type="button" onClick={() => clearToken("gpuToken")} disabled={saving} className="text-[11px] font-bold text-muted hover:text-rose-500 whitespace-nowrap">Remove</button>}
+              </div>
+            </label>
+          </div>
+          <div className="space-y-1">
+            <div className={label}>Deploy FLUX.1 schnell on Modal (about 10 minutes)</div>
+            {GPU_STEPS.map((s, i) => <p key={i} className="text-xs text-foreground">{i + 1}. {s}</p>)}
+            <p className="text-[11px] text-muted">Any endpoint works if it accepts POST {"{ prompt, width, height, seed, steps }"} with a bearer token and returns a PNG/JPEG body or {"{ image: <base64>, mime }"}. Modal&apos;s free allowance covers roughly 300 images a month on an L4; after that each image is under a cent.</p>
+          </div>
+        </div>
+      )}
+
+      {provider === "wavespeed" && (
+        <p className="text-[11px] text-muted">Billed to the server&apos;s Wavespeed account. Top up at wavespeed.ai when previews fail with &ldquo;Insufficient credits&rdquo;, or switch to a free provider above.</p>
+      )}
+
+      <div className="flex justify-end">
+        <button onClick={save} disabled={saving} className="px-5 py-2 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-50">{saving ? "Saving…" : "Save image generator"}</button>
+      </div>
+    </div>
   );
 }
 
