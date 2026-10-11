@@ -40,7 +40,7 @@ const compact = (p) => ({ id: p.id, platform: p.platform, mediaType: p.mediaType
 
 export function registerTools(server) {
   /* ---------- read ---------- */
-  server.registerTool("list_brands", { title: "List brands", description: "Brand accounts this user manages in Influenci, with follower counts and post totals." }, async (_args, extra) => {
+  server.registerTool("list_brands", { title: "List brands", description: "Brand accounts this user manages in Influenci, with follower counts and post totals.", inputSchema: z.object({}) }, async (_args, extra) => {
     try {
       const user = await mcpUser(extra);
       const brands = await prisma.actor.findMany({ where: { userId: user.id, kind: "brand" }, include: { channels: { select: { platform: true, handle: true, followers: true, status: true } }, _count: { select: { channelPosts: true, recommendations: true } } } });
@@ -115,7 +115,7 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("list_actors", { title: "List AI actors", description: "AI persona actors (not brands) with their bible and channels, for create_actor_post.", }, async (_args, extra) => {
+  server.registerTool("list_actors", { title: "List AI actors", description: "AI persona actors (not brands) with their bible and channels, for create_actor_post.", inputSchema: z.object({}) }, async (_args, extra) => {
     try {
       const user = await mcpUser(extra);
       const actors = await prisma.actor.findMany({ where: { userId: user.id, kind: { not: "brand" } }, include: { channels: { select: { platform: true, handle: true, status: true } } } });
