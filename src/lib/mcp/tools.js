@@ -17,7 +17,7 @@ import { enforceLimits } from "@/lib/content/limits";
 import { slotsForDay } from "@/lib/scheduler/cadence";
 import { todayIn } from "@/lib/time";
 import { mergeBrandProfile } from "@/lib/personas/brand";
-import { renderCardToBlob, TEMPLATES } from "@/lib/render/cards";
+import { renderCardToBlob, renderSvgToBlob, TEMPLATES } from "@/lib/render/cards";
 
 const PlatformEnum = z.enum(["facebook", "facebook_group", "instagram", "tiktok", "x", "youtube"]);
 
@@ -208,7 +208,7 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a brand post. With preview: true (recommended) Influenci only renders the image/video: no platforms, no date, nothing can publish; show the user the keyframeUrl from get_post, then call schedule_post. Without preview it is scheduled straight away as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), preview: z.boolean().default(true).describe("Render only; schedule later with schedule_post"), platforms: z.array(z.enum(["instagram", "facebook", "facebook_group"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional() }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
+  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a brand post. With preview: true (recommended) Influenci only renders the image/video: no platforms, no date, nothing can publish; show the user the keyframeUrl from get_post, then call schedule_post. Without preview it is scheduled straight away as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), preview: z.boolean().default(true).describe("Render only; schedule later with schedule_post"), platforms: z.array(z.enum(["instagram", "facebook", "facebook_group"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question", "photo"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional(), svg: z.string().optional().describe("A complete <svg> you designed (1080x1350 recommended); rendered for free with the brand fonts Oswald and Inter. Use instead of template.") }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
     try {
       const user = await mcpUser(extra);
       const actor = await brandFor(user, args.brandId);
@@ -295,11 +295,19 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("render_card", { title: "Render brand card", description: `Composite a branded card image for free (no AI, no render credits) from the brand templates: ${Object.entries(TEMPLATES).map(([k, t]) => `${k} (${t.fields.map((f) => f.key + (f.required ? "*" : "")).join(", ")}${t.photo ? ", photoUrl* JPEG/PNG" : ""})`).join("; ")}. Returns the image URL. To post it, call create_post with visualBrief { template, fields, photoUrl } and a caption.`, inputSchema: z.object({ brandId: z.string(), template: z.enum(["winner", "contender", "throwback", "question"]), fields: z.record(z.string(), z.string()).default({}), photoUrl: z.string().optional().describe("https URL of the hunter's photo (JPEG or PNG); required for winner/contender/throwback") }) }, async ({ brandId, template, fields, photoUrl }, extra) => {
+  server.registerTool("render_card", { title: "Render brand card", description: `Composite a branded card image for free (no AI, no render credits) from the brand templates: ${Object.entries(TEMPLATES).map(([k, t]) => `${k} (${t.fields.map((f) => f.key + (f.required ? "*" : "")).join(", ")}${t.photo ? ", photoUrl* JPEG/PNG" : ""})`).join("; ")}. Returns the image URL. To post it, call create_post with visualBrief { template, fields, photoUrl } and a caption.`, inputSchema: z.object({ brandId: z.string(), template: z.enum(["winner", "contender", "throwback", "question", "photo"]), fields: z.record(z.string(), z.string()).default({}), photoUrl: z.string().optional().describe("https URL of the hunter's photo (JPEG or PNG); required for winner/contender/throwback") }) }, async ({ brandId, template, fields, photoUrl }, extra) => {
     try {
       const actor = await brandFor(await mcpUser(extra), brandId);
       const card = await renderCardToBlob({ actor, template, fields, photoUrl: photoUrl || null });
       return json({ url: card.url, template: card.template, fields: card.fields, bytes: card.bytes, next: "create_post with visualBrief { template, fields, photoUrl } + caption" });
+    } catch (err) { return fail(err); }
+  });
+
+  server.registerTool("render_svg", { title: "Render a designed SVG", description: "Rasterize an SVG you designed into a 1080-wide PNG for free (no AI, no render credits). Fonts available by family name: Oswald (500, 700) and Inter (500, 800). Remote <image href> JPEG/PNG are inlined. Returns the image URL; to post it, call create_post with visualBrief { svg } and a caption.", inputSchema: z.object({ brandId: z.string(), svg: z.string().describe("Complete <svg …> document; viewBox 0 0 1080 1350 for a 4:5 post, 1080x1080 for square") }) }, async ({ brandId, svg }, extra) => {
+    try {
+      const actor = await brandFor(await mcpUser(extra), brandId);
+      const out = await renderSvgToBlob({ actor, svg });
+      return json({ url: out.url, width: out.width, height: out.height, bytes: out.bytes, next: "create_post with visualBrief { svg } + caption (preview first)" });
     } catch (err) { return fail(err); }
   });
 

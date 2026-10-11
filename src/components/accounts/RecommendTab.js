@@ -17,7 +17,7 @@ function PreviewPanel({ r, platforms, toggle, when, setWhen, onAction, busy }) {
   const rendering = RENDERING.includes(p.status);
   const failed = p.status === "failed";
   const media = p.videoUrl || p.keyframeUrl;
-  const card = r.visualBrief?.template;
+  const card = r.visualBrief?.template || (r.visualBrief?.svg ? "svg" : null);
   return (
     <div className="rounded-lg border border-primary/30 bg-bg-page p-3 grid grid-cols-1 md:grid-cols-[180px_1fr] gap-3">
       <div className="aspect-[4/5] rounded-md bg-black/80 overflow-hidden flex items-center justify-center">
@@ -49,7 +49,7 @@ function RecCard({ r, onAction, busy }) {
   const [when, setWhen] = useState("");
   const toggle = (p) => setPlatforms((x) => (x.includes(p) ? x.filter((y) => y !== p) : [...x, p]));
   const previewing = r.status !== "used" && r.post && r.post.preview && r.post.status !== "cancelled";
-  const isCard = Boolean(r.visualBrief?.template);
+  const isCard = Boolean(r.visualBrief?.template || r.visualBrief?.svg);
   return (
     <div className={`rounded-xl border bg-bg-card p-4 space-y-3 ${r.status === "used" ? "border-emerald-500/40" : r.status === "saved" ? "border-primary/40" : "border-divider"}`}>
       <div className="flex items-start gap-3">
@@ -82,7 +82,7 @@ function RecCard({ r, onAction, busy }) {
       {previewing && <PreviewPanel r={r} platforms={platforms} toggle={toggle} when={when} setWhen={setWhen} onAction={onAction} busy={busy} />}
       {r.status !== "used" && !previewing && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-muted">{isCard ? "Preview is free (brand card template)." : "Preview renders the image with render credits; nothing is scheduled until you say so."}</span>
+          <span className="text-[11px] text-muted">{isCard ? `Preview is free (${r.visualBrief?.svg ? "designed graphic" : `${r.visualBrief.template} template`}).` : "Preview renders the image with render credits; nothing is scheduled until you say so. Tip: add a template on the connector (photo / question / winner) to make it free."}</span>
           <div className="flex-1" />
           {edit ? <button onClick={() => { onAction(r, "save-edit", { caption }); setEdit(false); }} className={btnGhost}>Save caption</button> : <button onClick={() => setEdit(true)} className={btnGhost}>Edit caption</button>}
           <button onClick={() => onAction(r, r.status === "saved" ? "unsave" : "save")} disabled={busy === r.id} className={btnGhost}><FiBookmark /> {r.status === "saved" ? "Saved" : "Save"}</button>

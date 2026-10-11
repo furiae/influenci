@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
-import { renderCard, renderCardSvg, normalizeCard, TEMPLATES } from "../src/lib/render/templates/apex-card.js";
+import { renderCard, renderCardSvg, renderSvgPng, normalizeCard, TEMPLATES } from "../src/lib/render/templates/apex-card.js";
 
 const photo = `data:image/png;base64,${fs.readFileSync("public/seed/apex/21.png").toString("base64")}`;
 const actor = { name: "Apex Outdoor Rewards", designSystem: { palette: [{ hex: "#C8102E", role: "primary" }] }, brandProfile: {} };
@@ -20,6 +20,7 @@ describe("card compositor", () => {
       contender: { name: "William Strong", state: "Michigan", year: "2026" },
       throwback: { name: "Brandon Roberts", state: "West Virginia", year: "2023" },
       question: { question: "What is 1 tip you would give a new deer hunter?" },
+      photo: { headline: "Share If You're Ready For Cool, Crisp Mornings In The Tree Stand", subhead: "What's the one tradition your camp never skips?", kicker: "One week to gun season" },
     };
     for (const template of Object.keys(TEMPLATES)) {
       const { png, width, height } = await renderCard({ template, fields: cases[template], photoUrl: TEMPLATES[template].photo ? photo : null, actor });
@@ -34,5 +35,16 @@ describe("card compositor", () => {
     expect(svg).toContain('filter="url(#bw)"');
     const webp = `data:image/webp;base64,${fs.readFileSync("public/seed/apex/1.webp").toString("base64")}`;
     await expect(renderCard({ template: "winner", fields: { name: "A B", state: "WV" }, photoUrl: webp, actor })).rejects.toThrow(/JPEG or PNG/);
+  }, 30000);
+});
+
+describe("designed SVG rasterizer", () => {
+  it("renders an SVG with the brand fonts to a PNG and rejects scripts", async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="#C8102E"/><text x="540" y="700" font-family="Oswald" font-weight="700" font-size="120" fill="#fff" text-anchor="middle">SHOOT OR PASS?</text></svg>`;
+    const { png, width, height } = await renderSvgPng(svg);
+    expect(png.subarray(0, 4).equals(PNG)).toBe(true);
+    expect([width, height]).toEqual([1080, 1350]);
+    expect(png.length).toBeGreaterThan(20000); // a flat red card with no glyphs is ~9 KB; text must actually render
+    await expect(renderSvgPng(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)).rejects.toThrow(/scripts/);
   }, 30000);
 });

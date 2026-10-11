@@ -147,6 +147,8 @@ export const RecommendationsSchema = z.object({
         overlayText: z.string(),
         palette: z.array(z.string()).max(4),
         notes: z.string(),
+        template: z.enum(["winner", "contender", "throwback", "question", "photo", "none"]).describe("Free brand template to render it with; 'none' only when a generated image is unavoidable"),
+        fields: z.record(z.string(), z.string()).describe("Template fields, e.g. { headline, subhead, kicker } or { name, state, place, prize } or { question, kicker }"),
       }),
       bestTime: z.object({ weekday: z.string(), hourLocal: z.number().int().min(0).max(23) }),
       predictedScore: z.number().int().min(1).max(10),

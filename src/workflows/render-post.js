@@ -11,7 +11,7 @@ import { copyToBlob } from "@/lib/render/store";
 import { logEvent } from "@/lib/scheduler/status";
 import { PLATFORMS } from "@/lib/platforms";
 import { submitBrandKeyframe, brandMotionPrompt } from "@/lib/render/brand";
-import { renderCardToBlob, wantsCard } from "@/lib/render/cards";
+import { renderCardToBlob, renderSvgToBlob, wantsCard } from "@/lib/render/cards";
 
 const MAX_KEYFRAME_ATTEMPTS = 3;
 
@@ -131,11 +131,14 @@ async function compositeCard(postId) {
   if (post.keyframeQa?.pass && post.keyframeUrl) return { cached: true };
   const brief = post.script.visualBrief;
   try {
-    const card = await renderCardToBlob({ actor: post.actor, template: brief.template, fields: brief.fields || {}, photoUrl: brief.photoUrl || brief.referenceImages?.[0] || null, pathname: `keyframes/${post.actor.slug || post.actorId}/${postId}-card.png` });
-    const record = { pass: true, score: 1, issues: [], attempts: 1, brand: true, composited: brief.template };
+    const pathname = `keyframes/${post.actor.slug || post.actorId}/${postId}-card.png`;
+    const card = brief.template
+      ? await renderCardToBlob({ actor: post.actor, template: brief.template, fields: brief.fields || {}, photoUrl: brief.photoUrl || brief.referenceImages?.[0] || null, pathname })
+      : await renderSvgToBlob({ actor: post.actor, svg: brief.svg, pathname });
+    const record = { pass: true, score: 1, issues: [], attempts: 1, brand: true, composited: brief.template || "svg" };
     await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: card.url, keyframeQa: record } });
-    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: 0, message: `composited ${brief.template} card`, data: { url: card.url, template: brief.template } });
-    console.log("[RENDER] card composited", postId, brief.template);
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: 0, message: `composited ${brief.template || "svg"} card`, data: { url: card.url, template: brief.template || "svg" } });
+    console.log("[RENDER] card composited", postId, brief.template || "svg");
     return record;
   } catch (err) {
     throw new FatalError(`card: ${err.message}`);
