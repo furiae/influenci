@@ -293,7 +293,8 @@ async function finishRender(postId, { videoUrl, imageOnly } = {}) {
     stored = await copyToBlob(videoUrl, `posts/${post.actor.slug || post.actorId}/${postId}.mp4`, { contentType: "video/mp4" });
     if (post.creationId) await prisma.creation.update({ where: { id: post.creationId }, data: { status: "completed", url: stored.url } });
   }
-  const approved = Boolean(post.actor.autoPublish);
+  // Previews have no targets and no date; they are never auto-approved.
+  const approved = Boolean(post.actor.autoPublish) && !post.script?.preview;
   await prisma.post.update({
     where: { id: postId },
     data: {

@@ -23,7 +23,8 @@ export async function GET(req) {
     take: 500,
     include: { actor: { select: { id: true, name: true, slug: true, kind: true, imageUrl: true, timezone: true, bible: true } }, targets: { select: TARGET_SELECT, orderBy: { scheduledAt: "asc" } } },
   });
-  return NextResponse.json(posts);
+  // Preview renders (no platforms, no date yet) stay off the calendar until they are scheduled.
+  return NextResponse.json(q.get("includePreviews") ? posts : posts.filter((p) => !p.script?.preview));
 }
 
 /** POST { actorId, idea, hook?, pillar?, date?, mediaType?, clipLengthSec? } → manual post + render. */

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createPostFromRecommendation } from "@/lib/insights/post-from-rec";
+import { createPostFromRecommendation, schedulePreviewPost, discardPreviewPost } from "@/lib/insights/post-from-rec";
 
 export const maxDuration = 120;
 
@@ -29,15 +29,23 @@ export async function PATCH(req, { params }) {
   return NextResponse.json(updated);
 }
 
-/** POST { action: "create-post", platforms?, date?, referenceImages? } → brand Post + render. */
+/**
+ * POST { action: "preview", referenceImages? }            → render only (no date, no platforms, never published)
+ * POST { action: "schedule", platforms?, date? }           → final step: add platforms + date to the previewed post
+ * POST { action: "discard-preview" }                       → throw the preview away
+ * POST { action: "create-post", platforms?, date?, referenceImages? } → preview + schedule in one go (legacy)
+ */
 export async function POST(req, { params }) {
   const { id } = await params;
   const { user, rec } = await ownedRec(id);
   if (!rec) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json().catch(() => ({}));
+  const refs = Array.isArray(body.referenceImages) ? body.referenceImages.filter((u) => /^https:\/\//.test(u)).slice(0, 4) : [];
   try {
+    if (body.action === "schedule") return NextResponse.json(await schedulePreviewPost(rec, { platforms: body.platforms, date: body.date, userId: user.id }));
+    if (body.action === "discard-preview") return NextResponse.json({ discarded: Boolean(await discardPreviewPost(rec, { userId: user.id })) });
     if (rec.postId) return NextResponse.json({ error: "A post was already created from this recommendation" }, { status: 400 });
-    const post = await createPostFromRecommendation(rec, { platforms: body.platforms, date: body.date, referenceImages: Array.isArray(body.referenceImages) ? body.referenceImages.filter((u) => /^https:\/\//.test(u)).slice(0, 4) : [], userId: user.id });
+    const post = await createPostFromRecommendation(rec, { platforms: body.platforms, date: body.date, referenceImages: refs, userId: user.id, preview: body.action === "preview" });
     return NextResponse.json(post, { status: 201 });
   } catch (err) {
     console.error("[REC_POST_ERROR]", err);

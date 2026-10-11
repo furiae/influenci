@@ -12,7 +12,8 @@ export async function GET(req, { params }) {
   const { actor } = await owned(id);
   if (!actor) return new NextResponse("Unauthorized", { status: 401 });
   const status = new URL(req.url).searchParams.get("status");
-  const items = await prisma.recommendation.findMany({ where: { actorId: id, ...(status ? { status } : { status: { not: "dismissed" } }) }, orderBy: [{ createdAt: "desc" }], take: 200, include: { post: { select: { id: true, status: true, keyframeUrl: true, planDate: true } } } });
+  const rows = await prisma.recommendation.findMany({ where: { actorId: id, ...(status ? { status } : { status: { not: "dismissed" } }) }, orderBy: [{ createdAt: "desc" }], take: 200, include: { post: { select: { id: true, status: true, mediaType: true, keyframeUrl: true, videoUrl: true, renderError: true, planDate: true, script: true, targets: { select: { platform: true, scheduledAt: true } } } } } });
+  const items = rows.map((r) => ({ ...r, post: r.post ? { id: r.post.id, status: r.post.status, mediaType: r.post.mediaType, keyframeUrl: r.post.keyframeUrl, videoUrl: r.post.videoUrl, renderError: r.post.renderError, planDate: r.post.planDate, preview: Boolean(r.post.script?.preview), targets: r.post.targets } : null }));
   return NextResponse.json({ items, calibration: actor.insightsSummary?.calibration || null });
 }
 

@@ -6,7 +6,7 @@ import { recordPosts } from "@/lib/insights/screenshots";
 import { rescoreActor } from "@/lib/insights/sync";
 import { saveDesignSystem } from "@/lib/insights/design-system";
 import { predictionBaselines, clampPrediction } from "@/lib/insights/recommend";
-import { createPostFromRecommendation } from "@/lib/insights/post-from-rec";
+import { createPostFromRecommendation, schedulePreviewPost, discardPreviewPost } from "@/lib/insights/post-from-rec";
 import { upcomingSeasons } from "@/lib/insights/seasonality";
 import { topBenchmarks, benchmarksToPrompt } from "@/lib/benchmarks";
 import { bibleToSystemPrompt } from "@/lib/personas/bible";
@@ -197,7 +197,7 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a scheduled brand post. Influenci renders the image/video and queues it as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), platforms: z.array(z.enum(["instagram", "facebook"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional() }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
+  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a brand post. With preview: true (recommended) Influenci only renders the image/video: no platforms, no date, nothing can publish; show the user the keyframeUrl from get_post, then call schedule_post. Without preview it is scheduled straight away as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), preview: z.boolean().default(true).describe("Render only; schedule later with schedule_post"), platforms: z.array(z.enum(["instagram", "facebook"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional() }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
     try {
       const user = await mcpUser(extra);
       const actor = await brandFor(user, args.brandId);
@@ -210,8 +210,29 @@ export function registerTools(server) {
       } else if (args.visualBrief) {
         rec = await prisma.recommendation.update({ where: { id: rec.id }, data: { visualBrief: { ...(rec.visualBrief || {}), ...args.visualBrief } } });
       }
-      const post = await createPostFromRecommendation(rec, { platforms: args.platforms, date: args.scheduledAt, referenceImages: args.referenceImages || [], userId: user.id });
+      const post = await createPostFromRecommendation(rec, { platforms: args.platforms, date: args.scheduledAt, referenceImages: args.referenceImages || [], userId: user.id, preview: args.preview !== false });
+      if (args.preview !== false) return json({ postId: post.id, recommendationId: rec.id, status: post.status, preview: true, next: "Poll get_post until keyframeUrl/videoUrl is set, show it to the user, then schedule_post or discard_preview", compliance: post.compliance });
       return json({ postId: post.id, status: post.status, planDate: post.planDate, targets: post.targets.map((t) => ({ platform: t.platform, scheduledAt: t.scheduledAt })), calendar: `/calendar?post=${post.id}`, compliance: post.compliance });
+    } catch (err) { return fail(err); }
+  });
+
+  server.registerTool("schedule_post", { title: "Schedule a previewed post", description: "Final step after a preview the user approved: add platforms and a date. The post moves to the calendar as a draft that still needs approval before publishing.", inputSchema: z.object({ recommendationId: z.string(), platforms: z.array(z.enum(["instagram", "facebook"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time") }) }, async ({ recommendationId, platforms, scheduledAt }, extra) => {
+    try {
+      const user = await mcpUser(extra);
+      const rec = await prisma.recommendation.findFirst({ where: { id: recommendationId, actor: { userId: user.id } } });
+      if (!rec) return fail("Recommendation not found");
+      const post = await schedulePreviewPost(rec, { platforms, date: scheduledAt, userId: user.id });
+      return json({ postId: post.id, status: post.status, planDate: post.planDate, targets: post.targets.map((t) => ({ platform: t.platform, scheduledAt: t.scheduledAt })), calendar: `/calendar?post=${post.id}`, compliance: post.compliance });
+    } catch (err) { return fail(err); }
+  });
+
+  server.registerTool("discard_preview", { title: "Discard a preview", description: "Throw away a previewed post the user did not like; the recommendation stays in the library.", inputSchema: z.object({ recommendationId: z.string() }) }, async ({ recommendationId }, extra) => {
+    try {
+      const user = await mcpUser(extra);
+      const rec = await prisma.recommendation.findFirst({ where: { id: recommendationId, actor: { userId: user.id } } });
+      if (!rec) return fail("Recommendation not found");
+      await discardPreviewPost(rec, { userId: user.id });
+      return text("discarded");
     } catch (err) { return fail(err); }
   });
 
