@@ -52,6 +52,16 @@ export const TEMPLATES = {
     ],
     photo: true,
   },
+  photo: {
+    label: "Photo + headline",
+    description: "Your own photo (hunter, camp, trail cam) with a brand headline over a dark gradient. The format behind the brand's share graphics and most reels. Free.",
+    fields: [
+      { key: "headline", label: "Headline", required: true, example: "Share If You're Ready For Cool, Crisp Mornings In The Tree Stand" },
+      { key: "subhead", label: "Subhead", example: "What's the one tradition your camp never skips?" },
+      { key: "kicker", label: "Kicker (top)", example: "One week to gun season" },
+    ],
+    photo: true,
+  },
   question: {
     label: "Question card",
     description: "Solid brand-red card with a big centred question. No photo needed. Questions pull 5–10× the comments of announcements.",
@@ -240,7 +250,22 @@ function question(f, _photo, t) {
   ]);
 }
 
-const RENDERERS = { winner, contender, throwback, question };
+function photo(f, photoUri, t) {
+  const headline = String(f.headline || "").trim();
+  const size = headline.length > 110 ? 64 : headline.length > 70 ? 76 : headline.length > 40 ? 92 : 108;
+  return h("div", { width: W, height: H, display: "flex", position: "relative", backgroundColor: t.black }, [
+    ...photoLayer(photoUri, t, { dim: 0.45 }),
+    f.kicker ? h("div", { position: "absolute", top: 56, left: 56, right: 56, display: "flex" }, h("div", { fontFamily: "Inter", fontWeight: 800, fontSize: 28, color: t.white, letterSpacing: 6, textTransform: "uppercase", backgroundColor: t.red, padding: "10px 18px" }, f.kicker)) : h("div", {}),
+    h("div", { position: "absolute", left: 56, right: 56, bottom: 190, display: "flex", flexDirection: "column", gap: 14 }, [
+      h("div", { fontFamily: "Oswald", fontWeight: 700, fontSize: size, lineHeight: 1.05, color: t.white, textTransform: "uppercase", letterSpacing: 2 }, headline),
+      f.subhead ? h("div", { fontFamily: "Inter", fontWeight: 800, fontSize: 30, color: t.yellow, letterSpacing: 2 }, f.subhead) : h("div", {}),
+      h("div", { width: 180, height: 10, backgroundColor: t.red }),
+    ]),
+    footer(t),
+  ]);
+}
+
+const RENDERERS = { winner, contender, throwback, question, photo };
 
 /** Validate template + fields; returns { template, fields } or throws. */
 export function normalizeCard({ template, fields = {}, photoUrl } = {}) {
@@ -278,4 +303,41 @@ export async function renderCard(input) {
   const r = new Resvg(svg, { fitTo: { mode: "width", value: W }, font: { loadSystemFonts: false } });
   const png = r.render().asPng();
   return { png: Buffer.from(png), width: W, height: H };
+}
+
+/** Inline remote <image href="https://…"> references so resvg can draw them. */
+async function inlineRemoteImages(svg) {
+  const refs = Array.from(new Set(Array.from(svg.matchAll(/(?:xlink:href|href)=["'](https?:\/\/[^"']+)["']/g)).map((m) => m[1]))).slice(0, 8);
+  let total = 0;
+  for (const url of refs) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const buf = Buffer.from(await res.arrayBuffer());
+      total += buf.length;
+      if (total > 12 * 1024 * 1024) break;
+      const type = sniffImageType(buf) || (res.headers.get("content-type") || "image/png").split(";")[0];
+      if (!["image/jpeg", "image/png", "image/gif"].includes(type)) continue;
+      const uri = `data:${type};base64,${buf.toString("base64")}`;
+      svg = svg.split(url).join(uri);
+    } catch {}
+  }
+  return svg;
+}
+
+/**
+ * Rasterize an SVG designed elsewhere (e.g. by Claude through the connector)
+ * with the brand fonts (Oswald 500/700, Inter 500/800) available by family name.
+ * Returns { png, width, height }.
+ */
+export async function renderSvgPng(svgInput, { width = W } = {}) {
+  let svg = String(svgInput || "").trim();
+  if (!svg.startsWith("<svg") && !svg.startsWith("<?xml")) throw new Error("Expected an <svg> document");
+  if (svg.length > 2 * 1024 * 1024) throw new Error("SVG is too large (max 2 MB)");
+  if (/<script[\s>]/i.test(svg)) throw new Error("SVG must not contain scripts");
+  svg = await inlineRemoteImages(svg);
+  const fontFiles = ["oswald-latin-700-normal.woff", "oswald-latin-500-normal.woff", "inter-latin-800-normal.woff", "inter-latin-500-normal.woff"].map((f) => path.join(FONT_DIR, f));
+  const r = new Resvg(svg, { fitTo: { mode: "width", value: width }, font: { fontFiles, loadSystemFonts: false, defaultFontFamily: "Oswald" } });
+  const out = r.render();
+  return { png: Buffer.from(out.asPng()), width: out.width, height: out.height };
 }

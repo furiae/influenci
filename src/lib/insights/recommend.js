@@ -79,6 +79,7 @@ ALREADY RECOMMENDED (do not repeat): ${prior.map((p) => `${p.title} (${p.status}
 Rules:
 - Mix formats and pillars; at least 3 should ride a seasonal moment in the next 30 days; at least 2 should be variations of our proven top posts; at least 2 should borrow a format competitors prove works that we have not tried.
 - Captions ready to post, in the brand voice, with the right hashtags for the platform; giveaway posts must include "No purchase necessary" and point to the official rules.
+- FREE FORMATS FIRST: the brand renders these templates at no cost, and the audience responds to real photos over generated art, so prefer them: "photo" (a real hunter/camp/trail-cam photo + headline/subhead/kicker), "question" (solid red question card), "winner" / "contender" / "throwback" (hunter cards). Set visualBrief.template and visualBrief.fields accordingly; use "none" only when the idea truly needs a generated image (rare).
 - bestTime comes from BEST SLOTS above (local time); vary it across the list.
 - basedOnOwnPosts / basedOnBenchmarks hold the exact ids you cite (the [id] values and the B-numbers' ids).`;
 
@@ -93,6 +94,7 @@ Rules:
         batchId,
         kind: "post",
         platforms: rec.platforms,
+        visualBrief: rec.visualBrief?.template === "none" ? { ...rec.visualBrief, template: undefined, fields: undefined } : rec.visualBrief,
         format: rec.format,
         title: rec.title.slice(0, 120),
         concept: rec.concept,
