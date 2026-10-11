@@ -30,6 +30,12 @@ export const APEX_BRAND = {
     hashtagSets: { core: ["apexoutdoorrewards", "whitetailchallenge", "deerhunting", "hunting", "bowhunting"], seasonal: ["openingday", "rut", "trailcamtuesday", "throwbackthursday", "turkeyseason"] },
     links: { website: "https://apexoutdoorrewards.com", facebook: "ApexOutdoorRewards", instagram: "apex_outdoor_rewards", tiktok: "apexoutdoorrewards", youtube: "apexoutdoorrewards", phone: "(615) 716-1210", email: "teamapex@apexoutdoorrewards.com" },
     followers: { facebook: 22000, instagram: null },
+    following: { facebook: 152 },
+    bio: "APEX Outdoor Rewards offers State-Specific Turkey & Whitetail Hunting Events with Fishing Challenges COMING SOON! Get Rewarded for Enjoying your Passion while Promoting Community and Contributing to Conservation Efforts! Reward Yourself & ENTER TODAY!",
+    pageCategory: "Sports & recreation",
+    community: {
+      facebookGroup: { name: "APEX Outdoor Rewards Group", members: 9100, private: true, note: "Private group run by the Page. Best place for the question posts, UGC asks and deer-camp tagging; members are entrants and their buddies." },
+    },
     seasonality: [
       { name: "Green Top gift-card deadline", from: "09-20", to: "10-01", note: "Enter by Oct 1 to be in the $500 drawing" },
       { name: "Fin Feather Fur gift-card deadline", from: "10-15", to: "11-01", note: "Enter by Nov 1" },

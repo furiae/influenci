@@ -67,6 +67,7 @@ BRAND
 - About: ${b.description || "(none)"}
 - Website: ${b.website || b.links?.website || "(none)"}
 - Audience: ${b.audience || "(general)"}
+- Reach: ${[b.followers?.facebook ? `${b.followers.facebook.toLocaleString()} Facebook followers` : "", b.followers?.instagram ? `${b.followers.instagram.toLocaleString()} Instagram followers` : "", b.community?.facebookGroup?.members ? `${b.community.facebookGroup.members.toLocaleString()}-member ${b.community.facebookGroup.private ? "private " : ""}Facebook group "${b.community.facebookGroup.name}"${b.community.facebookGroup.note ? ` (${b.community.facebookGroup.note})` : ""}` : ""].filter(Boolean).join("; ") || "(unknown)"}
 
 PRODUCTS / OFFERS
 ${list(b.products)}
