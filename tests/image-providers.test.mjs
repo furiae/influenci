@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import fs from "node:fs";
-import { aspectToSize, sniffImageType, normalizeImage, generateWithGpuEndpoint, IMAGE_PROVIDERS } from "../src/lib/render/image-providers.js";
+import { aspectToSize, sniffImageType, normalizeImage, generateWithGpuEndpoint, splitOverlayText, IMAGE_PROVIDERS } from "../src/lib/render/image-providers.js";
+import { cleanBrandImagePrompt, brandOverlayText } from "../src/lib/render/brand.js";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
@@ -10,6 +11,21 @@ describe("image providers", () => {
   it("lists the three generators with two free ones", () => {
     expect(Object.keys(IMAGE_PROVIDERS)).toEqual(["zerogpu", "gpu", "wavespeed"]);
     expect(Object.values(IMAGE_PROVIDERS).filter((p) => p.free)).toHaveLength(2);
+  });
+
+  it("asks open-weight generators for a text-free photo and composites the words afterwards", () => {
+    const actor = { name: "Apex", designSystem: { palette: [{ hex: "#C8102E", role: "primary" }], imagery: { styles: ["deer camp at dusk"] } } };
+    const post = { idea: "deer camp", script: { keyframePrompt: 'Text overlay reads exactly: "WHO\'S IN YOUR DEER CAMP?"', overlayText: "Who's in your deer camp? Tag them.", visualBrief: { subject: "a cabin at dusk", overlayText: "Who's in your deer camp? Tag them." } } };
+    const prompt = cleanBrandImagePrompt(actor, post);
+    expect(prompt).not.toMatch(/reads exactly|DEER CAMP/);
+    expect(prompt).toMatch(/no text, no lettering/);
+    expect(prompt).toMatch(/cabin at dusk/);
+    expect(brandOverlayText(post)).toBe("Who's in your deer camp? Tag them.");
+    expect(splitOverlayText("")).toBeNull();
+    expect(splitOverlayText("Who's in your deer camp?")).toEqual({ headline: "Who's in your deer camp?" });
+    expect(splitOverlayText("Who's in your deer camp this season? Tag them below so they see the love and sign up today")).toEqual({ headline: "Who's in your deer camp this season?", subhead: "Tag them below so they see the love and sign up today" });
+    const long = splitOverlayText("a ".repeat(60).trim());
+    expect(long.headline.length).toBeLessThanOrEqual(70);
   });
 
   it("maps aspects to FLUX-friendly sizes (multiples of 16)", () => {

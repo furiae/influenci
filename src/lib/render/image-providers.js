@@ -149,13 +149,29 @@ export async function normalizeImage(out) {
 }
 
 /**
+ * Split the overlay text into the photo template's headline + subhead so a
+ * long line still fits: a question or first sentence becomes the headline.
+ */
+export function splitOverlayText(text) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  if (t.length <= 70) return { headline: t };
+  const m = t.match(/^(.{12,90}?[?!.])\s+(.+)$/);
+  if (m) return { headline: m[1], subhead: m[2].slice(0, 90) };
+  const cut = t.lastIndexOf(" ", 70);
+  return cut > 20 ? { headline: t.slice(0, cut), subhead: t.slice(cut + 1, cut + 91) } : { headline: t.slice(0, 110) };
+}
+
+/**
  * Generate a brand keyframe with the selected free provider, normalise it to
- * JPEG/PNG and store it on Blob. Returns { url, prompt, provider, contentType }.
+ * JPEG/PNG and store it on Blob. Open-weight generators cannot spell, so the
+ * image is asked for with no lettering and any overlay text is composited on
+ * top with the free photo template. Returns { url, rawUrl, prompt, provider, composited }.
  */
 export async function generateBrandImage({ actor, post, seed, settings, pathname }) {
-  const { buildBrandImagePrompt, brandAspect } = await import("./brand");
+  const { cleanBrandImagePrompt, brandOverlayText, brandAspect } = await import("./brand");
   const s = settings || (await getImageSettings());
-  const prompt = buildBrandImagePrompt(actor, post);
+  const prompt = cleanBrandImagePrompt(actor, post);
   const { width, height } = aspectToSize(brandAspect(post));
   let out;
   if (s.provider === "zerogpu") out = await generateWithZeroGpu({ prompt, width, height, seed, hfToken: s.hfToken });
@@ -163,6 +179,11 @@ export async function generateBrandImage({ actor, post, seed, settings, pathname
   else throw new Error(`Provider ${s.provider} is not a direct image provider`);
   const img = await normalizeImage(out);
   const ext = img.contentType === "image/jpeg" ? "jpg" : "png";
-  const blob = await put(pathname || `keyframes/${actor.slug || actor.id}/${post.id}-${s.provider}-${seed ?? 0}.${ext}`, img.buffer, { access: "public", contentType: img.contentType, addRandomSuffix: true });
-  return { url: blob.url, prompt, provider: s.provider, contentType: img.contentType, bytes: img.buffer.length };
+  const base = (pathname || `keyframes/${actor.slug || actor.id}/${post.id}-${s.provider}-${seed ?? 0}.png`).replace(/\.[a-z]+$/i, "");
+  const raw = await put(`${base}-raw.${ext}`, img.buffer, { access: "public", contentType: img.contentType, addRandomSuffix: true });
+  const fields = splitOverlayText(brandOverlayText(post));
+  if (!fields) return { url: raw.url, rawUrl: raw.url, prompt, provider: s.provider, contentType: img.contentType, bytes: img.buffer.length, composited: false };
+  const { renderCardToBlob } = await import("./cards");
+  const card = await renderCardToBlob({ actor, template: "photo", fields, photoUrl: raw.url, pathname: `${base}.png` });
+  return { url: card.url, rawUrl: raw.url, prompt, provider: s.provider, contentType: "image/png", bytes: card.bytes, composited: true, fields };
 }
