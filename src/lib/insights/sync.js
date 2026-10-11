@@ -8,32 +8,88 @@ import { importChannelWorkflow } from "@/workflows/import-channel";
 
 const SYNC_EVERY_MS = 24 * 3600 * 1000;
 
-/** Re-score every post on a channel against the channel's own pool. */
-export async function rescoreChannel(channelId) {
-  const channel = await prisma.channel.findUnique({ where: { id: channelId } });
-  if (!channel) return { scored: 0 };
-  const posts = await prisma.channelPost.findMany({ where: { channelId }, select: { id: true, platform: true, likes: true, comments: true, shares: true, saves: true, views: true, reach: true, followersAtFetch: true, postedAt: true } });
+/** Follower count for a platform: the connected channel, else the brand profile's manual number. */
+export async function followersFor(actorId, platform) {
+  const channel = await prisma.channel.findFirst({ where: { actorId, platform }, select: { followers: true } });
+  if (channel?.followers) return channel.followers;
+  const actor = await prisma.actor.findUnique({ where: { id: actorId }, select: { brandProfile: true } });
+  const n = Number(actor?.brandProfile?.followers?.[platform]);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Re-score every post of one actor on one platform against that platform's
+ * own pool. Works with or without a connected channel (screenshot imports).
+ */
+export async function rescorePlatform(actorId, platform) {
+  const followers = await followersFor(actorId, platform);
+  const posts = await prisma.channelPost.findMany({ where: { actorId, platform }, select: { id: true, platform: true, likes: true, comments: true, shares: true, saves: true, views: true, reach: true, followersAtFetch: true, postedAt: true } });
   const now = Date.now();
-  const pools = buildPools(posts, channel.followers || 0, now);
+  const pools = buildPools(posts, followers, now);
   let scored = 0;
   for (const p of posts) {
-    const r = scoreChannelPost(p, { followers: channel.followers || 0, ...pools, now });
-    await prisma.channelPost.update({ where: { id: p.id }, data: { score: r.score, scoreBreakdown: r.breakdown, engagementRate: r.engagementRate, reachRate: r.reachRate, scoreVersion: SCORE_VERSION } });
+    const r = scoreChannelPost(p, { followers, ...pools, now });
+    await prisma.channelPost.update({ where: { id: p.id }, data: { score: r.score, scoreBreakdown: r.breakdown, engagementRate: r.engagementRate, reachRate: r.reachRate, scoreVersion: SCORE_VERSION, ...(followers && !p.followersAtFetch ? { followersAtFetch: followers } : {}) } });
     scored += 1;
   }
-  console.log("[RESCORE]", channel.platform, channel.handle, scored);
+  console.log("[RESCORE]", actorId, platform, scored, "followers", followers);
+  return { scored, followers };
+}
+
+/** Re-score every platform an actor has posts on. */
+export async function rescoreActor(actorId) {
+  const groups = await prisma.channelPost.groupBy({ by: ["platform"], where: { actorId } });
+  let scored = 0;
+  for (const g of groups) scored += (await rescorePlatform(actorId, g.platform)).scored;
   return { scored };
 }
 
-/** Upsert a page of listed posts into ChannelPost; returns ids touched. */
+/** Re-score every post on a channel (kept for the import workflow). */
+export async function rescoreChannel(channelId) {
+  const channel = await prisma.channel.findUnique({ where: { id: channelId } });
+  if (!channel) return { scored: 0 };
+  return rescorePlatform(channel.actorId, channel.platform);
+}
+
+/** A screenshot/manual row that matches a freshly listed platform post (same minute, or same caption start). */
+async function findUnlinkedTwin(channel, p) {
+  const when = p.postedAt ? new Date(p.postedAt) : null;
+  const head = String(p.caption || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const candidates = await prisma.channelPost.findMany({
+    where: { actorId: channel.actorId, platform: channel.platform, channelId: null, ...(when ? { postedAt: { gte: new Date(when.getTime() - 3 * 60000), lte: new Date(when.getTime() + 3 * 60000) } } : {}) },
+    take: 5,
+  });
+  if (candidates.length) return candidates[0];
+  if (head.length >= 20) {
+    return prisma.channelPost.findFirst({ where: { actorId: channel.actorId, platform: channel.platform, channelId: null, caption: { startsWith: head } } });
+  }
+  return null;
+}
+
+/**
+ * Upsert a page of listed posts into ChannelPost; returns ids touched.
+ * A screenshot-imported twin (no channel yet) is merged into the real row
+ * instead of being duplicated; its screenshot stays as the thumbnail fallback.
+ */
 export async function upsertListedPosts(channel, posts) {
   const ids = [];
   for (const p of posts) {
     const { raw, ...rest } = p;
+    const key = { actorId_platform_externalId: { actorId: channel.actorId, platform: channel.platform, externalId: p.externalId } };
+    const existing = await prisma.channelPost.findUnique({ where: key });
+    const twin = existing ? null : await findUnlinkedTwin(channel, p);
+    if (twin) {
+      const row = await prisma.channelPost.update({
+        where: { id: twin.id },
+        data: { channelId: channel.id, externalId: p.externalId, source: "import", caption: p.caption || twin.caption, mediaType: p.mediaType, mediaUrls: p.mediaUrls, thumbnailUrl: p.thumbnailUrl || twin.thumbnailUrl, url: p.url, likes: Math.max(p.likes, twin.likes), comments: Math.max(p.comments, twin.comments), shares: Math.max(p.shares || 0, twin.shares), fetchedAt: new Date(), raw: { ...(twin.raw || {}), ...(raw || {}), mergedFrom: "screenshot" } },
+      });
+      ids.push(row.id);
+      continue;
+    }
     const row = await prisma.channelPost.upsert({
-      where: { channelId_externalId: { channelId: channel.id, externalId: p.externalId } },
+      where: key,
       create: { channelId: channel.id, actorId: channel.actorId, platform: channel.platform, ...rest, raw: raw || null, followersAtFetch: channel.followers || null, fetchedAt: new Date() },
-      update: { caption: p.caption, mediaType: p.mediaType, mediaUrls: p.mediaUrls, thumbnailUrl: p.thumbnailUrl, url: p.url, likes: p.likes, comments: p.comments, shares: p.shares || undefined, fetchedAt: new Date(), ...(raw ? { raw } : {}) },
+      update: { channelId: channel.id, caption: p.caption, mediaType: p.mediaType, mediaUrls: p.mediaUrls, thumbnailUrl: p.thumbnailUrl, url: p.url, likes: p.likes, comments: p.comments, shares: p.shares || undefined, fetchedAt: new Date(), ...(raw ? { raw } : {}) },
     });
     ids.push(row.id);
   }

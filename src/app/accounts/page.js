@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { upload } from "@vercel/blob/client";
 import toast, { Toaster } from "react-hot-toast";
-import { FiPlus, FiX, FiUpload, FiLoader, FiTrash2, FiBriefcase, FiRefreshCw } from "react-icons/fi";
+import { FiPlus, FiX, FiUpload, FiLoader, FiTrash2, FiBriefcase, FiRefreshCw, FiZap as FiZapIcon } from "react-icons/fi";
 import { Field, inputCls, fmt, pct, when, PLATFORM_DOT } from "@/components/ui/form";
 
 const EMPTY = { name: "", website: "", facebook: "", instagram: "", notes: "", imageUrl: "" };
@@ -63,6 +63,22 @@ export default function AccountsPage() {
     }
   };
 
+  const [seeding, setSeeding] = useState(false);
+  const seedApex = async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/ops/seed-apex", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Seed failed");
+      toast.success(`Apex Outdoor Rewards added with ${d.posts} posts`);
+      window.location.href = `/accounts/${d.actorId}`;
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const remove = async (a) => {
     if (!confirm(`Delete ${a.name} and its imported posts?`)) return;
     const res = await fetch(`/api/accounts/${a.id}`, { method: "DELETE" });
@@ -91,7 +107,11 @@ export default function AccountsPage() {
               <h3 className="text-lg font-bold text-foreground">No brand accounts yet</h3>
               <p className="text-xs text-muted max-w-sm">Add a brand, connect Meta, and the import will pull every post with its likes, comments, shares, saves and reach.</p>
             </div>
-            <button onClick={() => setEditing({ ...EMPTY })} className="px-6 py-3 rounded-full bg-primary text-white text-sm font-bold">Add brand</button>
+            <div className="flex gap-2">
+              <button onClick={seedApex} disabled={seeding} className="px-6 py-3 rounded-full bg-primary text-white text-sm font-bold disabled:opacity-50 flex items-center gap-2">{seeding ? <FiLoader className="animate-spin" /> : <FiZapIcon />} Quick start: Apex Outdoor Rewards</button>
+              <button onClick={() => setEditing({ ...EMPTY })} className="px-6 py-3 rounded-full border border-divider text-sm font-bold text-muted hover:text-foreground">Add another brand</button>
+            </div>
+            <p className="text-[11px] text-muted max-w-sm">Quick start loads the Facebook posts we transcribed from your screenshots (Aug 19 – Oct 9, 22K followers) and scores them. Connect Meta later and the real metrics merge in.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -13,6 +13,7 @@ export default function ProfileTab({ actor, save, saving, reload }) {
     audience: b.audience || "", voice: b.voice || "", pillars: listToText(b.pillars), doNots: listToText(b.doNots), ctas: listToText(b.ctas),
     coreTags: listToText(b.hashtagSets?.core), seasonalTags: listToText(b.hashtagSets?.seasonal), notes: b.notes || "",
     facebook: b.links?.facebook || "", instagram: b.links?.instagram || "",
+    fbFollowers: b.followers?.facebook ?? "", igFollowers: b.followers?.instagram ?? "",
     autoPublish: Boolean(actor.autoPublish), autoPlan: Boolean(actor.cadence?.autoPlan),
   });
   const [generating, setGenerating] = useState(false);
@@ -26,6 +27,7 @@ export default function ProfileTab({ actor, save, saving, reload }) {
       audience: form.audience, voice: form.voice, pillars: textToList(form.pillars), doNots: textToList(form.doNots), ctas: textToList(form.ctas),
       hashtagSets: { core: textToList(form.coreTags), seasonal: textToList(form.seasonalTags) }, notes: form.notes,
       links: { website: form.website, facebook: form.facebook, instagram: form.instagram },
+      followers: { facebook: form.fbFollowers === "" ? null : Number(form.fbFollowers), instagram: form.igFollowers === "" ? null : Number(form.igFollowers) },
     },
   });
 
@@ -54,6 +56,8 @@ export default function ProfileTab({ actor, save, saving, reload }) {
           <Field label="Timezone"><input value={form.timezone} onChange={set("timezone")} className={inputCls} /></Field>
           <Field label="Facebook Page"><input value={form.facebook} onChange={set("facebook")} className={inputCls} /></Field>
           <Field label="Instagram"><input value={form.instagram} onChange={set("instagram")} className={inputCls} /></Field>
+          <Field label="Facebook followers" hint="Used for engagement rate until the Page is connected"><input type="number" value={form.fbFollowers} onChange={set("fbFollowers")} className={inputCls} /></Field>
+          <Field label="Instagram followers"><input type="number" value={form.igFollowers} onChange={set("igFollowers")} className={inputCls} /></Field>
         </div>
         <Field label="One-liner"><input value={form.oneLiner} onChange={set("oneLiner")} className={inputCls} /></Field>
         <Field label="About"><textarea rows={3} value={form.description} onChange={set("description")} className={inputCls} /></Field>

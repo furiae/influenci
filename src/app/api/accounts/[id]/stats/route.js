@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { ownedBrand as owned } from "@/lib/accounts";
 import { computeStats } from "@/lib/insights/stats";
 import { buildInsightsSummary, settleRecommendations } from "@/lib/insights/summary";
-import { rescoreChannel } from "@/lib/insights/sync";
-import { prisma } from "@/lib/prisma";
+import { rescoreActor } from "@/lib/insights/sync";
 
 export const maxDuration = 120;
 
@@ -25,9 +24,7 @@ export async function POST(req, { params }) {
   const body = await req.json().catch(() => ({}));
   try {
     if (body.action === "rescore") {
-      const channels = await prisma.channel.findMany({ where: { actorId: id }, select: { id: true } });
-      let scored = 0;
-      for (const c of channels) scored += (await rescoreChannel(c.id)).scored;
+      const { scored } = await rescoreActor(id);
       await settleRecommendations(id);
       return NextResponse.json({ scored });
     }
