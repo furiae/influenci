@@ -2,7 +2,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 // Pages that need a signed-in user are redirected to /login. API routes check
 // auth() themselves and answer 401, so they are left alone here.
-const isProtectedPage = createRouteMatcher(["/", "/actors(.*)", "/gallery(.*)", "/calendar(.*)", "/settings(.*)"]);
+const isProtectedPage = createRouteMatcher(["/", "/actors(.*)", "/accounts(.*)", "/gallery(.*)", "/calendar(.*)", "/settings(.*)"]);
 
 export default clerkMiddleware(
   async (auth, request) => {

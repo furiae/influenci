@@ -7,7 +7,7 @@ import { PLATFORMS, PLATFORM_INFO } from "@/lib/platforms";
 
 const fmt = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}k` : String(n));
 
-export default function CompetitorsTab({ actor }) {
+export default function CompetitorsTab({ actor, brand = false }) {
   const [data, setData] = useState(null);
   const [platform, setPlatform] = useState("youtube");
   const [handle, setHandle] = useState("");
@@ -31,6 +31,21 @@ export default function CompetitorsTab({ actor }) {
       const d2 = await r2.json();
       if (!r2.ok) toast.error(d2.error || "Added, but fetch failed");
       else toast.success(`Added @${d.handle} (${d2.fetched ?? 0} posts)`);
+      await load();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const seedOutdoors = async () => {
+    setBusy("seed");
+    try {
+      const res = await fetch(`/api/accounts/${actor.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "seed-competitors" }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      toast.success(`${d.added} outdoor-niche accounts added. Fetch all to pull their posts.`);
       await load();
     } catch (err) {
       toast.error(err.message);
@@ -89,9 +104,12 @@ export default function CompetitorsTab({ actor }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-black text-foreground">Reference accounts</h3>
-            <p className="text-[11px] text-muted">7–10 creators in this niche per platform. Their best-performing recent posts become benchmarks the writer studies before proposing ideas.</p>
+            <p className="text-[11px] text-muted">{brand ? "Hunting, fishing, whitetail and turkey brands whose best posts become benchmarks for recommendations. Instagram reads go through your connected Instagram channel; Facebook has no public read API." : "7–10 creators in this niche per platform. Their best-performing recent posts become benchmarks the writer studies before proposing ideas."}</p>
           </div>
-          <button onClick={refreshAll} disabled={busy || !data.competitors.length} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-2 disabled:opacity-50">{busy === "refresh" ? <FiLoader className="animate-spin" /> : <FiRefreshCw />} Fetch all</button>
+          <div className="flex gap-2">
+            {brand && <button onClick={seedOutdoors} disabled={busy} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-2 disabled:opacity-50">{busy === "seed" ? <FiLoader className="animate-spin" /> : <FiPlus />} Add hunting &amp; fishing brands</button>}
+            <button onClick={refreshAll} disabled={busy || !data.competitors.length} className="px-4 py-2 rounded-lg border border-divider text-xs font-bold flex items-center gap-2 disabled:opacity-50">{busy === "refresh" ? <FiLoader className="animate-spin" /> : <FiRefreshCw />} Fetch all</button>
+          </div>
         </div>
         <form onSubmit={add} className="flex flex-wrap gap-2">
           <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm">

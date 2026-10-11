@@ -98,6 +98,43 @@ export const DEFAULT_COMPETITORS = {
   ],
 };
 
+/**
+ * Hunting / fishing / whitetail / turkey reference accounts for brand actors in
+ * the outdoor rewards space. Keyed by bible.category / brandProfile.category
+ * label so the seed route can match them. Handles may need correcting.
+ */
+export const OUTDOOR_COMPETITORS = [
+  { platform: "instagram", handle: "realtree" },
+  { platform: "instagram", handle: "mossyoak" },
+  { platform: "instagram", handle: "bassproshops" },
+  { platform: "instagram", handle: "cabelas" },
+  { platform: "instagram", handle: "nwtf_official" },
+  { platform: "instagram", handle: "whitetail_properties" },
+  { platform: "instagram", handle: "meateater" },
+  { platform: "instagram", handle: "thehuntingpublic" },
+  { platform: "instagram", handle: "bonecollector" },
+  { platform: "instagram", handle: "primos_hunting" },
+  { platform: "instagram", handle: "bassmaster" },
+  { platform: "instagram", handle: "majorleaguefishing" },
+  { platform: "instagram", handle: "rapala_usa" },
+  { platform: "instagram", handle: "onxhunt" },
+  { platform: "instagram", handle: "ducksunlimited" },
+  { platform: "instagram", handle: "drury_outdoors" },
+  { platform: "instagram", handle: "googansquad" },
+  { platform: "youtube", handle: "TheHuntingPublic" },
+  { platform: "youtube", handle: "MeatEater" },
+  { platform: "youtube", handle: "DruryOutdoors" },
+  { platform: "youtube", handle: "Realtree" },
+  { platform: "youtube", handle: "Bassmaster" },
+  { platform: "youtube", handle: "Googan" },
+  { platform: "youtube", handle: "nwtf" },
+  { platform: "x", handle: "Realtree" },
+  { platform: "x", handle: "BassProShops" },
+  { platform: "x", handle: "NWTF_official" },
+];
+
+export const OUTDOOR_CATEGORY = "Hunting · Fishing · Outdoor rewards";
+
 /** Short category shown under the actor's name. */
 export const DEFAULT_CATEGORIES = {
   ginger: "Pets · Dog",

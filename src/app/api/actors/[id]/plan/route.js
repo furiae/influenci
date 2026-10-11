@@ -14,7 +14,7 @@ export async function POST(req, { params }) {
     const { id } = await params;
     const actor = await prisma.actor.findFirst({ where: { id, userId: user.id } });
     if (!actor) return new NextResponse("Not Found", { status: 404 });
-    if (!actor.imageUrl) return NextResponse.json({ error: "Upload a main reference photo first." }, { status: 400 });
+    if (!actor.imageUrl && actor.kind !== "brand") return NextResponse.json({ error: "Upload a main reference photo first." }, { status: 400 });
     const body = await req.json().catch(() => ({}));
     const tz = actor.timezone || "America/New_York";
     const date = /^\d{4}-\d{2}-\d{2}$/.test(body.date || "") ? body.date : addDays(todayIn(tz), 1);

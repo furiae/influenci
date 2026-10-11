@@ -1,6 +1,9 @@
+import { brandToSystemPrompt } from "./brand";
+
 /**
  * Persona bible: the stable description of who an actor is, used verbatim in
  * every prompt so voice and look stay consistent across hundreds of posts.
+ * Brand actors (kind = "brand") use brandToSystemPrompt instead.
  */
 
 export const EMPTY_BIBLE = {
@@ -46,6 +49,7 @@ function list(arr) {
 
 /** Stable system prompt for content generation. Keep deterministic for prompt caching. */
 export function bibleToSystemPrompt(actor) {
+  if (actor?.kind === "brand") return brandToSystemPrompt(actor);
   const b = mergeBible(actor.bible, {});
   const species = actor.kind === "pet" ? "a pet character (an animal, not a person)" : "a human-looking character";
   return `You write social media content for "${actor.name}", ${species} who is an AI-generated influencer persona.

@@ -16,6 +16,19 @@ Voiceovers for talking actors use Microsoft Edge's neural TTS via `msedge-tts` (
 
 Users pay with credits (1 credit = $0.005) drawn from the server's keys, or bring their own Wavespeed/MUAPI key and pay the provider directly.
 
+## Brand accounts
+
+Besides AI personas, Influenci manages **real brand accounts** (`/accounts`): connect a Facebook Page and the Instagram professional account linked to it with one Meta login, import the full post history with likes, comments, shares, saves, reach and views, and the app:
+
+- scores every post **1–10** (50 % rank inside the account, 30 % industry engagement bands, 20 % reach rate; posts under 72 h are provisional),
+- analyses each post with Claude vision (format, subject, hook, overlay, palette, CTA, why it worked),
+- builds a dashboard and printable report (KPIs, reach trend, ER by format, best time to post, Claude's "what's working / do next"),
+- extracts an editable, versioned **design system + caption style** from the top posts and proposes changes as new posts come in,
+- recommends new posts with a predicted score and reach range, grounded in our stats, hunting/fishing competitor benchmarks, the outdoor seasonal calendar and past prediction accuracy,
+- turns a recommendation into a brand-styled image or reel, schedules it, publishes to Instagram/Facebook, and reads the metrics back so predictions get calibrated.
+
+Because the Pages are ones you administer, Meta's Standard Access is enough: no App Review is needed. Daily syncs run from the scheduler ticker.
+
 ## Stack
 
 - Next.js 16 App Router, React 19, Tailwind v4
@@ -45,8 +58,13 @@ src/app/api/creations   list / status-poll / delete renders
 src/app/api/actors      saved AI actors CRUD
 src/app/api/upload      Vercel Blob client-upload token exchange
 src/app/api/webhook     MUAPI completion callback (secret-protected)
-src/app/                Ad Builder (/), AI Actors (/actors), Final Videos (/gallery), Pricing
+src/app/                Ad Builder (/), AI Actors (/actors), Brand Accounts (/accounts), Calendar, Final Videos (/gallery), Pricing
+src/lib/social/meta.js  Facebook Page + Instagram connector (OAuth, history, insights, publishing)
+src/lib/insights/       scoring (1-10), stats, Claude post analysis, summary, design system, recommendations, seasonality
+src/workflows/import-channel.js  durable history import / daily sync
 ```
+
+Run the unit tests with `pnpm test` (vitest).
 
 ## Adding a provider
 

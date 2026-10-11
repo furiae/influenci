@@ -12,8 +12,9 @@ export async function GET(req, { params }) {
   if (!user) return NextResponse.redirect(`${baseUrl()}/login`);
   const actorId = new URL(req.url).searchParams.get("actorId");
   const actor = actorId ? await prisma.actor.findFirst({ where: { id: actorId, userId: user.id } }) : null;
-  const back = actor ? `${baseUrl()}/actors/${actor.id}?tab=channels` : `${baseUrl()}/actors`;
-  if (!actor) return NextResponse.redirect(`${back}&error=${encodeURIComponent("Actor not found")}`);
+  const home = actor?.kind === "brand" ? "/accounts" : "/actors";
+  const back = actor ? `${baseUrl()}${home}/${actor.id}?tab=channels` : `${baseUrl()}/actors`;
+  if (!actor) return NextResponse.redirect(`${back}?error=${encodeURIComponent("Actor not found")}`);
 
   const connector = getConnector(platform);
   if (!connector) return NextResponse.redirect(`${back}&error=${encodeURIComponent(`${platform} connector is not available yet`)}`);

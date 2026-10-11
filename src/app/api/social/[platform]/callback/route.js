@@ -11,8 +11,9 @@ export const maxDuration = 60;
 export async function GET(req, { params }) {
   const { platform } = await params;
   const q = new URL(req.url).searchParams;
-  const fail = (actorId, msg) => {
-    const res = NextResponse.redirect(`${baseUrl()}${actorId ? `/actors/${actorId}?tab=channels` : "/actors"}&error=${encodeURIComponent(msg)}`.replace("/actors&error", "/actors?error"));
+  const fail = (actorId, msg, kind) => {
+    const home = kind === "brand" ? "/accounts" : "/actors";
+    const res = NextResponse.redirect(`${baseUrl()}${actorId ? `${home}/${actorId}?tab=channels&` : `${home}?`}error=${encodeURIComponent(msg)}`);
     res.headers.set("Set-Cookie", clearCookieHeader());
     return res;
   };
@@ -28,13 +29,14 @@ export async function GET(req, { params }) {
   const connector = getConnector(platform);
   const app = connector && (await getPlatformApp(connector.appKey));
   if (!connector || !app) return fail(state.actorId, "Connector or app credentials missing");
+  const actor = await prisma.actor.findUnique({ where: { id: state.actorId } });
+  if (!actor) return fail(null, "Actor not found");
+  const home = actor.kind === "brand" ? "/accounts" : "/actors";
 
   try {
     const result = await connector.exchangeCode({ app, redirectUri: redirectUri(platform), code, codeVerifier: state.codeVerifier });
-    const actor = await prisma.actor.findUnique({ where: { id: state.actorId } });
-    if (!actor) return fail(null, "Actor not found");
     const accounts = result.accounts || [];
-    if (!accounts.length) return fail(actor.id, `No ${connector.label} account found on that login`);
+    if (!accounts.length) return fail(actor.id, `No ${connector.label} account found on that login`, actor.kind);
 
     for (const acc of accounts) {
       const accessToken = acc.accessToken || result.accessToken;
@@ -52,6 +54,8 @@ export async function GET(req, { params }) {
         lastError: null,
         lastCheckedAt: new Date(),
         config: acc.config || {},
+        ...(acc.config?.followers != null ? { followers: Number(acc.config.followers) } : {}),
+        ...(acc.config?.mediaCount != null ? { mediaCount: Number(acc.config.mediaCount) } : {}),
       };
       const targetPlatform = acc.platform || platform;
       const channel = await prisma.channel.upsert({
@@ -69,11 +73,11 @@ export async function GET(req, { params }) {
       }
     }
     console.log("[SOCIAL_CONNECTED]", platform, actor.name, accounts.map((a) => a.handle || a.externalId));
-    const res = NextResponse.redirect(`${baseUrl()}/actors/${actor.id}?tab=channels&connected=${platform}`);
+    const res = NextResponse.redirect(`${baseUrl()}${home}/${actor.id}?tab=channels&connected=${platform}`);
     res.headers.set("Set-Cookie", clearCookieHeader());
     return res;
   } catch (err) {
     console.error("[SOCIAL_CALLBACK_ERROR]", platform, err);
-    return fail(state.actorId, err.message || "Connection failed");
+    return fail(state.actorId, err.message || "Connection failed", actor.kind);
   }
 }

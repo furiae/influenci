@@ -6,10 +6,11 @@ import { scoreIdentity } from "@/lib/identity/qa";
 import { writeScript, writeVariants } from "@/lib/content/planner";
 import { ClaudeError } from "@/lib/content/claude";
 import { buildMotionPrompt, negativeFor } from "@/lib/personas/prompts";
-import { RENDER, renderConfig, videoCents, keyframeCents } from "@/lib/render/models";
+import { renderConfig, videoCents, keyframeCents } from "@/lib/render/models";
 import { copyToBlob } from "@/lib/render/store";
 import { logEvent } from "@/lib/scheduler/status";
 import { PLATFORMS } from "@/lib/platforms";
+import { submitBrandKeyframe, brandMotionPrompt } from "@/lib/render/brand";
 
 const MAX_KEYFRAME_ATTEMPTS = 3;
 
@@ -83,7 +84,7 @@ async function beginRender(postId) {
   "use step";
   const post = await loadPost(postId);
   if (["cancelled", "published", "partial"].includes(post.status)) return { ok: false, reason: post.status };
-  if (!post.actor.imageUrl) return { ok: false, reason: "actor has no reference image" };
+  if (!post.actor.imageUrl && post.actor.kind !== "brand") return { ok: false, reason: "actor has no reference image" };
   await prisma.post.update({ where: { id: postId }, data: { status: "rendering", renderError: null } });
   console.log("[RENDER] begin", postId, post.actor.name);
   return { ok: true, mediaType: post.mediaType };
@@ -93,6 +94,13 @@ async function ensureScript(postId) {
   "use step";
   const post = await loadPost(postId);
   if (post.script?.keyframePrompt) return { cached: true };
+  if (post.actor.kind === "brand") {
+    // Brand posts carry a visual brief instead of a character script.
+    const { buildBrandImagePrompt } = await import("@/lib/render/brand");
+    const script = { ...(post.script || {}), hook: post.hook || "", keyframePrompt: buildBrandImagePrompt(post.actor, post), durationSec: post.clipLengthSec };
+    await prisma.post.update({ where: { id: postId }, data: { script } });
+    return { cached: false, brand: true };
+  }
   try {
     const { script, costCents } = await writeScript({
       actor: post.actor,
@@ -120,7 +128,9 @@ async function submitKeyframe(postId, attempt) {
   "use step";
   const post = await loadPost(postId);
   try {
-    const { requestId, prompt } = await submitKeyframeRequest({ actor: post.actor, script: post.script || {}, seed: 1000 + attempt * 7919 });
+    const { requestId, prompt } = post.actor.kind === "brand"
+      ? await submitBrandKeyframe({ actor: post.actor, post, seed: 1000 + attempt * 7919 })
+      : await submitKeyframeRequest({ actor: post.actor, script: post.script || {}, seed: 1000 + attempt * 7919 });
     await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", data: { attempt, requestId, prompt } });
     console.log("[RENDER] keyframe submitted", postId, "attempt", attempt, requestId);
     return requestId;
@@ -149,6 +159,11 @@ async function storeAndQaKeyframe(postId, attempt, sourceUrl) {
   try {
     const stored = await copyToBlob(sourceUrl, `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.jpg`, { contentType: "image/jpeg" });
     await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: keyframeCents(post.actor), data: { attempt, url: stored.url } });
+    if (post.actor.kind === "brand") {
+      const record = { pass: true, score: 1, issues: [], attempts: attempt + 1, brand: true };
+      await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: stored.url, keyframeQa: record } });
+      return record;
+    }
     const qa = await scoreIdentity({ actor: post.actor, candidateUrl: stored.url });
     await logEvent({ postId, actorId: post.actorId, kind: "render", step: "qa", status: qa.pass ? "ok" : "retry", costCents: qa.cents, message: `score ${qa.score.toFixed(2)}`, data: { attempt, issues: qa.issues } });
     const record = { pass: qa.pass, score: qa.score, issues: qa.issues, attempts: attempt + 1 };
@@ -193,10 +208,10 @@ async function submitVideo(postId) {
   const clip = actor.defaultClip && typeof actor.defaultClip === "object" ? actor.defaultClip : {};
   const audio = clip.audio !== false;
   const duration = post.clipLengthSec === 10 ? 10 : 5;
-  const prompt = buildMotionPrompt(actor, post.script || {});
+  const prompt = actor.kind === "brand" ? brandMotionPrompt(actor, post) : buildMotionPrompt(actor, post.script || {});
   const body =
-    actor.kind === "pet"
-      ? { image: post.keyframeUrl, prompt, negative_prompt: negativeFor(actor), duration, resolution: "720p", enable_audio: audio, shot_type: "single" }
+    actor.kind === "pet" || actor.kind === "brand"
+      ? { image: post.keyframeUrl, prompt, negative_prompt: actor.kind === "brand" ? "blurry, distorted text, warped logo, extra limbs, watermark" : negativeFor(actor), duration, resolution: "720p", enable_audio: audio, shot_type: "single" }
       : { image: post.keyframeUrl, prompt, negative_prompt: negativeFor(actor), duration, cfg_scale: 0.5, sound: audio };
   try {
     const requestId = await wsSubmit(cfg.video.slug, body);
@@ -260,7 +275,7 @@ async function finishRender(postId, { videoUrl, imageOnly } = {}) {
       approvedAt: approved ? new Date() : null,
       approvedBy: approved ? "auto" : null,
       videoUrl: stored?.url ?? null,
-      videoMeta: stored ? { bytes: stored.bytes, durationSec: post.clipLengthSec, width: 1080, height: 1920, hasAudio: post.actor.defaultClip?.audio !== false, model: RENDER[post.actor.kind === "pet" ? "pet" : "human"].video.slug } : (imageOnly ? { imageOnly: true } : null),
+      videoMeta: stored ? { bytes: stored.bytes, durationSec: post.clipLengthSec, width: 1080, height: 1920, hasAudio: post.actor.defaultClip?.audio !== false, model: renderConfig(post.actor).video.slug } : (imageOnly ? { imageOnly: true } : null),
     },
   });
   if (approved) await prisma.postTarget.updateMany({ where: { postId, status: "pending" }, data: { status: "queued" } });

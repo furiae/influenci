@@ -108,6 +108,7 @@ async function finishTarget(targetId, result) {
     await prisma.postTarget.update({ where: { id: targetId }, data: { status: "published", externalId: result.externalId || t.externalId, url: result.url || t.url, publishedAt: new Date(), error: null, lockedAt: null } });
     await prisma.channel.update({ where: { id: t.channelId }, data: { lastPublishedAt: new Date() } }).catch(() => {});
     await logEvent({ postId: t.postId, actorId: t.post.actorId, kind: "publish", step: `${t.platform}_done`, message: result.url || result.externalId });
+    await recordChannelPost(t, result);
   } else if (result.keepPublishing) {
     await prisma.postTarget.update({ where: { id: targetId }, data: { error: result.error } });
   } else {
@@ -117,4 +118,34 @@ async function finishTarget(targetId, result) {
   const postStatus = await recomputePostStatus(t.postId);
   console.log("[PUBLISH] finish", targetId, t.platform, result.status, "post:", postStatus);
   return { targetId, status: result.status };
+}
+
+/** Our own published post joins the analytics table so the next sync scores it. */
+async function recordChannelPost(t, result) {
+  const externalId = result.externalId || t.externalId;
+  if (!t.channelId || !externalId) return;
+  try {
+    const post = t.post;
+    await prisma.channelPost.upsert({
+      where: { channelId_externalId: { channelId: t.channelId, externalId } },
+      create: {
+        channelId: t.channelId,
+        actorId: post.actorId,
+        platform: t.platform,
+        externalId,
+        url: result.url || t.url || null,
+        caption: t.caption || null,
+        mediaType: post.mediaType === "image" ? "image" : t.platform === "instagram" ? "reel" : "video",
+        mediaUrls: [post.mediaType === "image" ? post.keyframeUrl : post.videoUrl].filter(Boolean),
+        thumbnailUrl: post.keyframeUrl || null,
+        postedAt: new Date(),
+        source: "influenci",
+        postTargetId: t.id,
+        hashtags: (t.hashtags || []).map((h) => h.replace(/^#/, "").toLowerCase()),
+      },
+      update: { postTargetId: t.id, url: result.url || t.url || null, source: "influenci" },
+    });
+  } catch (err) {
+    console.warn("[PUBLISH] channelPost record", err.message);
+  }
 }

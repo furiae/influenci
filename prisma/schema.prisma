@@ -8,13 +8,13 @@ datasource db {
 
 /// One row per signed-in person. `id` is the Clerk user id.
 model User {
-  id        String  @id
+  id        String     @id
   name      String?
-  email     String? @unique
+  email     String?    @unique
   image     String?
-  credits   Int     @default(100)
+  credits   Int        @default(100)
   /// "owner" unlocks platform settings and manual scheduler triggers
-  role      String  @default("member")
+  role      String     @default("member")
   /// Per-provider API keys the user brings themselves (values encrypted), e.g. { "wavespeed": "v1...." }
   apiKeys   Json?
   creations Creation[]
@@ -24,17 +24,17 @@ model User {
 
 /// A recurring AI persona: reference look, bible, cadence, connected channels.
 model Actor {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  slug      String?
-  kind      String   @default("human") // human | pet
-  active    Boolean  @default(true)
-  imageUrl  String   @db.Text // canonical frontal / hero image
-  gender    String?
-  ageRange  String?
-  notes     String?  @db.Text
-  timezone  String   @default("America/New_York")
+  id       String  @id @default(cuid())
+  userId   String
+  name     String
+  slug     String?
+  kind     String  @default("human") // human | pet
+  active   Boolean @default(true)
+  imageUrl String  @db.Text // canonical frontal / hero image
+  gender   String?
+  ageRange String?
+  notes    String? @db.Text
+  timezone String  @default("America/New_York")
 
   // Persona
   bible           Json?
@@ -51,6 +51,16 @@ model Actor {
   identityError   String?  @db.Text
   identityJobId   String?
 
+  // Brand accounts (kind = "brand"): a real business profile we manage
+  brandProfile        Json?
+  designSystem        Json?
+  designSystemVersion Int       @default(0)
+  insightsSummary     Json?
+  importStatus        String    @default("none") // none | importing | ready | failed
+  importRunId         String?
+  importError         String?   @db.Text
+  lastImportAt        DateTime?
+
   // Scheduling
   autoPublish  Boolean @default(false)
   videosPerDay Int     @default(1)
@@ -60,11 +70,13 @@ model Actor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creations   Creation[]
-  channels    Channel[]
-  posts       Post[]
-  competitors Competitor[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creations       Creation[]
+  channels        Channel[]
+  posts           Post[]
+  competitors     Competitor[]
+  channelPosts    ChannelPost[]
+  recommendations Recommendation[]
 
   @@unique([userId, slug])
   @@index([userId])
@@ -96,25 +108,25 @@ model Competitor {
 
 /// A public post fetched from a competitor, with engagement metrics.
 model BenchmarkPost {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   competitorId String
   platform     String
   externalId   String
-  url          String?  @db.Text
-  caption      String?  @db.Text
+  url          String?   @db.Text
+  caption      String?   @db.Text
   mediaType    String?
-  thumbnailUrl String?  @db.Text
+  thumbnailUrl String?   @db.Text
   postedAt     DateTime?
-  likes        Int      @default(0)
-  comments     Int      @default(0)
-  shares       Int      @default(0)
-  views        Int      @default(0)
-  score        Float    @default(0)
+  likes        Int       @default(0)
+  comments     Int       @default(0)
+  shares       Int       @default(0)
+  views        Int       @default(0)
+  score        Float     @default(0)
   durationSec  Int?
   /// Gemini video analysis: { hook, summary, structure, visualStyle, whyItWorks, onScreenText, cta, transcriptExcerpt }
   analysis     Json?
   analyzedAt   DateTime?
-  fetchedAt    DateTime @default(now())
+  fetchedAt    DateTime  @default(now())
 
   competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
 
@@ -141,11 +153,18 @@ model Channel {
   lastCheckedAt    DateTime?
   lastPublishedAt  DateTime?
   config           Json?
+  followers        Int?
+  following        Int?
+  mediaCount       Int?
+  lastSyncedAt     DateTime?
+  syncCursor       Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  actor   Actor        @relation(fields: [actorId], references: [id], onDelete: Cascade)
-  targets PostTarget[]
+  actor         Actor                 @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  targets       PostTarget[]
+  channelPosts  ChannelPost[]
+  dailyInsights ChannelDailyInsight[]
 
   @@unique([actorId, platform])
   @@index([platform, status])
@@ -178,11 +197,12 @@ model Post {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  actor    Actor           @relation(fields: [actorId], references: [id], onDelete: Cascade)
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creation Creation?       @relation(fields: [creationId], references: [id], onDelete: SetNull)
-  targets  PostTarget[]
-  events   PipelineEvent[]
+  actor          Actor           @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creation       Creation?       @relation(fields: [creationId], references: [id], onDelete: SetNull)
+  targets        PostTarget[]
+  events         PipelineEvent[]
+  recommendation Recommendation?
 
   @@unique([actorId, planDate, sequence])
   @@index([userId, planDate])
@@ -213,8 +233,9 @@ model PostTarget {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  post    Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  channel Channel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  channel     Channel?     @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  channelPost ChannelPost?
 
   @@unique([postId, platform, slotIndex])
   @@index([status, scheduledAt])
@@ -262,12 +283,12 @@ model Creation {
   userId    String
 
   /// Which adapter produced this: wavespeed | muapi | zerogpu
-  provider  String   @default("wavespeed")
+  provider  String  @default("wavespeed")
   requestId String?
   /// "server" when Chris's key paid for it, "user" when the user's own key did
-  keySource String   @default("server")
-  status    String   @default("processing")
-  error     String?  @db.Text
+  keySource String  @default("server")
+  status    String  @default("processing")
+  error     String? @db.Text
 
   // Generation parameters
   modelId     String?
@@ -294,4 +315,134 @@ model AppSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+/// One of OUR OWN posts on a connected channel: imported history or something
+/// Influenci published. Carries metrics, a 1-10 score and Claude's analysis.
+model ChannelPost {
+  id           String    @id @default(cuid())
+  channelId    String
+  actorId      String
+  platform     String
+  externalId   String
+  url          String?   @db.Text
+  caption      String?   @db.Text
+  mediaType    String? // image | video | carousel | reel | story | link | text
+  mediaUrls    String[]  @default([])
+  thumbnailUrl String?   @db.Text
+  postedAt     DateTime?
+  source       String    @default("import") // import | influenci
+  postTargetId String?   @unique
+
+  // Metrics (latest)
+  likes            Int    @default(0)
+  comments         Int    @default(0)
+  shares           Int    @default(0)
+  saves            Int    @default(0)
+  views            Int    @default(0)
+  reach            Int?
+  impressions      Int?
+  clicks           Int?
+  videoAvgWatchSec Float?
+  reactionsByType  Json?
+  followersAtFetch Int?
+
+  // Derived
+  engagementRate Float?
+  reachRate      Float?
+  score          Int? // 1..10
+  scoreBreakdown Json?
+  scoreVersion   Int    @default(0)
+
+  // Analysis (Claude vision)
+  analysis   Json?
+  analyzedAt DateTime?
+  topics     String[]  @default([])
+  format     String?
+  hashtags   String[]  @default([])
+
+  raw              Json?
+  fetchedAt        DateTime  @default(now())
+  metricsUpdatedAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  channel    Channel             @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  actor      Actor               @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  postTarget PostTarget?         @relation(fields: [postTargetId], references: [id], onDelete: SetNull)
+  metrics    ChannelPostMetric[]
+
+  @@unique([channelId, externalId])
+  @@index([actorId, postedAt])
+  @@index([actorId, score])
+}
+
+/// Metric snapshot per sync, for velocity and growth charts.
+model ChannelPostMetric {
+  id            String   @id @default(cuid())
+  channelPostId String
+  capturedAt    DateTime @default(now())
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  saves         Int      @default(0)
+  views         Int      @default(0)
+  reach         Int?
+
+  channelPost ChannelPost @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+
+  @@index([channelPostId, capturedAt])
+}
+
+/// Account-level daily insight row (followers, reach, profile views…).
+model ChannelDailyInsight {
+  id            String   @id @default(cuid())
+  channelId     String
+  date          String // "YYYY-MM-DD"
+  followers     Int?
+  newFollowers  Int?
+  reach         Int?
+  impressions   Int?
+  profileViews  Int?
+  websiteClicks Int?
+  raw           Json?
+  createdAt     DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, date])
+}
+
+/// A recommended post for a brand, with a predicted score and the evidence.
+model Recommendation {
+  id                      String   @id @default(cuid())
+  actorId                 String
+  batchId                 String?
+  status                  String   @default("suggested") // suggested | saved | dismissed | used
+  kind                    String   @default("post") // post | campaign | repurpose
+  platforms               String[] @default([])
+  format                  String?
+  title                   String
+  concept                 String   @db.Text
+  hook                    String?  @db.Text
+  caption                 String?  @db.Text
+  hashtags                String[] @default([])
+  visualBrief             Json?
+  bestTime                Json?
+  predictedScore          Int?
+  predictedReachLow       Int?
+  predictedReachHigh      Int?
+  predictedEngagementRate Float?
+  confidence              Float?
+  rationale               String?  @db.Text
+  basedOn                 Json?
+  postId                  String?  @unique
+  actualScore             Int?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  actor Actor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  post  Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, status, createdAt])
 }

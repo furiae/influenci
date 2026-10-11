@@ -34,7 +34,7 @@ export async function POST(req) {
     const body = await req.json();
     const actor = await prisma.actor.findFirst({ where: { id: body.actorId, userId: user.id } });
     if (!actor) return NextResponse.json({ error: "Actor not found" }, { status: 404 });
-    if (!actor.imageUrl) return NextResponse.json({ error: "Upload a main reference photo first." }, { status: 400 });
+    if (!actor.imageUrl && actor.kind !== "brand") return NextResponse.json({ error: "Upload a main reference photo first." }, { status: 400 });
     const idea = String(body.idea || "").trim();
     if (!idea) return NextResponse.json({ error: "Describe the idea" }, { status: 400 });
 

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { IoClose, IoMenu } from "react-icons/io5";
-import { FiPlus, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign, FiSettings, FiCalendar } from "react-icons/fi";
+import { FiPlus, FiKey, FiCheck, FiX, FiTrash2, FiFilm, FiUsers, FiVideo, FiDollarSign, FiSettings, FiCalendar, FiBriefcase } from "react-icons/fi";
 import { FaCoins } from "react-icons/fa";
 import config from "@/lib/config";
 import { useMe } from "@/lib/useMe";
@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 const NAV = [
   { name: "Ad Builder", path: "/", icon: FiVideo },
   { name: "AI Actors", path: "/actors", icon: FiUsers },
+  { name: "Brand Accounts", path: "/accounts", icon: FiBriefcase },
   { name: "Calendar", path: "/calendar", icon: FiCalendar },
   { name: "Final Videos", path: "/gallery", icon: FiFilm },
   { name: "Pricing", path: "/pricing", icon: FiDollarSign },
