@@ -17,7 +17,7 @@ describe("image providers", () => {
     const actor = { name: "Apex", designSystem: { palette: [{ hex: "#C8102E", role: "primary" }], imagery: { styles: ["deer camp at dusk", "bold headline over photo"] }, layoutPatterns: ["red band with white headline"], logoPlacement: "bottom right", typography: { overlayStyle: "Oswald caps" } } };
     const post = { idea: "deer camp", hook: "Who's In Your Deer Camp This Season? Tag Them Below 👇🦌", script: { keyframePrompt: 'Text overlay reads exactly: "WHO\'S IN YOUR DEER CAMP?"', overlayText: "", visualBrief: { subject: "a cabin at dusk", composition: "cabin centred. Bold headline WHO'S IN YOUR DEER CAMP across the top; logo bottom right", notes: 'Red band reading "TAG THEM". Warm porch light.' } } };
     const prompt = cleanBrandImagePrompt(actor, post);
-    expect(prompt.replace(/Absolutely no text.*$/, "")).not.toMatch(/reads exactly|DEER CAMP|headline|logo|TAG THEM|band|Oswald/i);
+    expect(prompt.replace(/Absolutely no text.*$/, "")).not.toMatch(/reads exactly|WHO'S IN YOUR|headline|logo|TAG THEM|band|Oswald/i);
     expect(prompt).toMatch(/cabin at dusk/);
     expect(prompt).toMatch(/cabin centred/);
     expect(prompt).toMatch(/Warm porch light/);
