@@ -36,7 +36,18 @@ async function renderBody(postId) {
   await compositeCard(postId);
 
   let qa = await currentQa(postId);
+  const provider = qa.pass ? null : await resolveImageProvider(postId);
   for (let attempt = 0; attempt < MAX_KEYFRAME_ATTEMPTS && !qa.pass; attempt++) {
+    if (provider !== "wavespeed") {
+      // Free providers (ZeroGPU Space, your own GPU endpoint) answer synchronously.
+      const r = await generateKeyframeDirect(postId, attempt);
+      if (!r.url) {
+        qa = { pass: false, issues: [r.error || "keyframe generation failed"] };
+        continue;
+      }
+      qa = await storeAndQaKeyframe(postId, attempt, r.url, { provider, stored: true });
+      continue;
+    }
     const requestId = await submitKeyframe(postId, attempt);
     let r;
     do {
@@ -47,7 +58,7 @@ async function renderBody(postId) {
       qa = { pass: false, issues: [r.error || "keyframe generation failed"] };
       continue;
     }
-    qa = await storeAndQaKeyframe(postId, attempt, r.url);
+    qa = await storeAndQaKeyframe(postId, attempt, r.url, { provider });
   }
   if (!qa.pass) return await failRender(postId, `identity_qa: ${qa.issues?.join("; ") || "below threshold"}`);
 
@@ -153,6 +164,46 @@ async function currentQa(postId) {
   return { pass: false };
 }
 
+/**
+ * Which image generator this post's keyframe comes from. Persona actors always
+ * use Wavespeed (identity editing needs the reference photo); brand posts use
+ * the generator picked in Settings → AI → Image generator. The choice is pinned
+ * on the post so retries and the events log agree.
+ */
+async function resolveImageProvider(postId) {
+  "use step";
+  const post = await loadPost(postId);
+  if (post.actor.kind !== "brand") return "wavespeed";
+  if (post.script?.keyframeProvider) return post.script.keyframeProvider;
+  const { getImageSettings } = await import("@/lib/render/image-providers");
+  const { provider } = await getImageSettings();
+  await prisma.post.update({ where: { id: postId }, data: { script: { ...(post.script || {}), keyframeProvider: provider } } });
+  return provider;
+}
+
+/** Free providers: generate, normalise and store the keyframe in one call. */
+async function generateKeyframeDirect(postId, attempt) {
+  "use step";
+  const post = await loadPost(postId);
+  const provider = post.script?.keyframeProvider || "zerogpu";
+  const { generateBrandImage, getImageSettings } = await import("@/lib/render/image-providers");
+  try {
+    const settings = { ...(await getImageSettings()), provider };
+    const refs = [...(post.script?.referenceImages || []), ...(post.script?.visualBrief?.referenceImages || [])].filter(Boolean);
+    const pathname = `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.png`;
+    const r = await generateBrandImage({ actor: post.actor, post, seed: 1000 + attempt * 7919, settings, pathname });
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", data: { attempt, provider, prompt: r.prompt, ignoredReferenceImages: refs.length || undefined } });
+    console.log("[RENDER] keyframe generated", postId, "attempt", attempt, provider);
+    return { url: r.url };
+  } catch (err) {
+    const message = err?.message || String(err);
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", status: "retry", message, data: { attempt, provider } });
+    console.warn("[RENDER] keyframe failed", postId, "attempt", attempt, provider, message);
+    return { url: null, error: `${provider}: ${message}` };
+  }
+}
+generateKeyframeDirect.maxRetries = 1;
+
 async function submitKeyframe(postId, attempt) {
   "use step";
   const post = await loadPost(postId);
@@ -182,14 +233,17 @@ async function pollPrediction(requestId) {
 }
 pollPrediction.maxRetries = 5;
 
-async function storeAndQaKeyframe(postId, attempt, sourceUrl) {
+async function storeAndQaKeyframe(postId, attempt, sourceUrl, { provider = "wavespeed", stored: alreadyStored = false } = {}) {
   "use step";
   const post = await loadPost(postId);
   try {
-    const stored = await copyToBlob(sourceUrl, `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.jpg`, { contentType: "image/jpeg" });
-    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents: keyframeCents(post.actor), data: { attempt, url: stored.url } });
+    const stored = alreadyStored
+      ? { url: sourceUrl }
+      : await copyToBlob(sourceUrl, `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.jpg`, { contentType: "image/jpeg" });
+    const costCents = provider === "wavespeed" ? keyframeCents(post.actor) : 0;
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe", costCents, message: provider === "wavespeed" ? undefined : `free (${provider})`, data: { attempt, url: stored.url, provider } });
     if (post.actor.kind === "brand") {
-      const record = { pass: true, score: 1, issues: [], attempts: attempt + 1, brand: true };
+      const record = { pass: true, score: 1, issues: [], attempts: attempt + 1, brand: true, provider };
       await prisma.post.update({ where: { id: postId }, data: { keyframeUrl: stored.url, keyframeQa: record } });
       return record;
     }
