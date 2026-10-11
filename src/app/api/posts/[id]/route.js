@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MANUAL_PLATFORMS } from "@/lib/platforms";
 
 const INCLUDE = {
   actor: { select: { id: true, name: true, slug: true, kind: true, imageUrl: true, timezone: true, autoPublish: true } },
@@ -44,15 +45,16 @@ export async function PATCH(req, { params }) {
       data.status = "approved";
       data.approvedAt = new Date();
       data.approvedBy = user.id;
+      await prisma.postTarget.updateMany({ where: { postId: id, status: "pending", platform: { in: MANUAL_PLATFORMS } }, data: { status: "manual" } });
       await prisma.postTarget.updateMany({ where: { postId: id, status: "pending" }, data: { status: "queued" } });
     } else if (body.status === "draft") {
       data.status = "draft";
       data.approvedAt = null;
       data.approvedBy = null;
-      await prisma.postTarget.updateMany({ where: { postId: id, status: "queued" }, data: { status: "pending" } });
+      await prisma.postTarget.updateMany({ where: { postId: id, status: { in: ["queued", "manual"] } }, data: { status: "pending" } });
     } else if (body.status === "cancelled") {
       data.status = "cancelled";
-      await prisma.postTarget.updateMany({ where: { postId: id, status: { in: ["pending", "queued"] } }, data: { status: "cancelled" } });
+      await prisma.postTarget.updateMany({ where: { postId: id, status: { in: ["pending", "queued", "manual"] } }, data: { status: "cancelled" } });
     }
 
     const updated = await prisma.post.update({ where: { id }, data, include: INCLUDE });

@@ -58,7 +58,11 @@ export async function recommendPosts(actorId, { count = 10, platforms = ["instag
   const ds = actor.designSystem;
 
   const system = `${bibleToSystemPrompt(actor)}\n\nYou are now the brand's content strategist. Every recommendation must cite evidence: our own posts by [id] and competitor posts by number. Predictions are numbers we will later check against reality, so be calibrated, not optimistic.`;
+  const group = actor.brandProfile?.community?.facebookGroup;
+  const surfaces = `SURFACES: "facebook" = the public Page (${actor.brandProfile?.followers?.facebook?.toLocaleString?.() || "?"} followers; reach comes from shares and the algorithm; recruitment, program news, winners, observances). ${group?.members ? `"facebook_group" = the private group "${group.name}" (${Number(group.members).toLocaleString()} members: entrants and their buddies; every post reaches the feed; questions, UGC asks, deadline reminders, leaderboard and Recruit Rewards belong here; it is posted by hand, so no reels that need the Page's tooling). Posts for the group use platforms ["facebook_group"] and are scored against members, not followers.` : ""}`;
   const user = `Propose ${count} new posts for ${platforms.join(" and ")}${focus ? ` with this focus: ${focus}` : ""}.
+
+${surfaces}
 
 ${statsToPrompt(stats)}
 

@@ -3,7 +3,8 @@ import { mergeBrandProfile } from "@/lib/personas/brand";
 import { recordPosts } from "@/lib/insights/screenshots";
 import { OUTDOOR_COMPETITORS } from "@/lib/personas/competitors";
 import { localTimeToUtc } from "@/lib/time";
-import { APEX_BRAND, APEX_POSTS } from "./apex";
+import { APEX_BRAND, APEX_POSTS, APEX_GROUP_MEMBER_POSTS } from "./apex";
+import { recordCommunityPosts } from "@/lib/insights/community";
 
 function baseUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")).replace(/\/$/, "");
@@ -53,6 +54,7 @@ export async function seedApex(userId, { competitors = true } = {}) {
     };
   });
   const r = await recordPosts(actor.id, posts, { source: "screenshot", defaultPlatform: "facebook" });
+  await recordCommunityPosts(actor.id, APEX_GROUP_MEMBER_POSTS.map((p) => ({ ...p, postedAt: localTimeToUtc(...p.postedAt.split("T"), APEX_BRAND.timezone).toISOString(), shares: 0, views: 0 })));
 
   let added = 0;
   if (competitors) {

@@ -24,6 +24,7 @@ export function registerPrompts(server) {
 - mediaType: image | carousel | video | reel | graphic (designed text/branded card) | text | link
 - format: a short label such as "winner card", "contender card", "throwback card", "question reel", "testimonial", "program announcement", "sponsor promo"
 - overlayText, mediaDescription (one sentence), brandReplied (true if the page replies in the thread)
+- platform "facebook_group" when the header shows the brand's group name; author "member" when the poster is "Group member" or an individual (member posts are stored as community benchmarks, not as the brand's posts), else "brand"
 Then call record_posts with brandId "${actor.id}" and platform "${platform || "facebook"}" in batches of up to 50. Report what was recorded and the scores returned. Ask for more screenshots.`);
   });
 
@@ -70,7 +71,7 @@ Then call save_design_system with brandId "${actor.id}" and the design system: {
     const num = (x) => (x == null ? "n/a" : Math.round(x).toLocaleString());
     return msg(`${bibleToSystemPrompt(actor)}
 
-You are now the brand's content strategist. Propose ${n} new posts${focus ? ` with this focus: ${focus}` : ""}. Cite evidence: our posts by [id], competitor posts by number. Predictions will be checked against reality later, so be calibrated.
+You are now the brand's content strategist. Propose ${n} new posts${focus ? ` with this focus: ${focus}` : ""}.${actor.brandProfile?.community?.facebookGroup?.members ? ` Split them between the public Page (platforms ["facebook"] or ["facebook","instagram"]: reach formats, program news, winners, observances) and the private group "${actor.brandProfile.community.facebookGroup.name}" (platforms ["facebook_group"], ${Number(actor.brandProfile.community.facebookGroup.members).toLocaleString()} members: questions, UGC asks, deadline reminders, leaderboard, Recruit Rewards; posted by hand, scored against members). Roughly 60/40 Page/Group.` : ""} Cite evidence: our posts by [id], competitor posts by number. Predictions will be checked against reality later, so be calibrated.
 
 ${statsToPrompt(stats)}
 

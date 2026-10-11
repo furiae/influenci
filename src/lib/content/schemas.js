@@ -138,7 +138,7 @@ export const RecommendationsSchema = z.object({
       concept: z.string().describe("2-3 sentence concept"),
       hook: z.string(),
       format: z.string().describe("image | carousel | reel | video | graphic"),
-      platforms: z.array(z.enum(["instagram", "facebook"])).min(1),
+      platforms: z.array(z.enum(["instagram", "facebook", "facebook_group"])).min(1),
       caption: z.string().describe("Ready-to-post caption in the brand voice"),
       hashtags: z.array(z.string()).max(12),
       visualBrief: z.object({
@@ -173,7 +173,8 @@ export const GiveawayCheckSchema = z.object({
 export const ScreenshotPostSchema = z.object({
   posts: z.array(
     z.object({
-      platform: z.enum(["facebook", "instagram", "tiktok", "x", "youtube", "unknown"]),
+      platform: z.enum(["facebook", "facebook_group", "instagram", "tiktok", "x", "youtube", "unknown"]).describe("facebook_group when the header shows a group name (e.g. 'APEX Outdoor Rewards Group')"),
+      author: z.enum(["brand", "member"]).describe("brand when the page/brand itself posted; member when the header says 'Group member' or shows an individual's name inside a group"),
       pageName: z.string().describe("Account/page name shown on the post"),
       postedAt: z.string().describe("ISO 8601 date-time as shown. If no year is visible assume the current year unless that would be in the future. If only a date is visible use 12:00. If the screenshot says 'N days ago' subtract from today."),
       dateText: z.string().describe("The date/time text exactly as shown, e.g. 'September 27 at 9:00 AM' or '5 days ago'"),

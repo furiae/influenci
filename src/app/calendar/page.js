@@ -37,6 +37,22 @@ function TargetEditor({ post, target, onChange }) {
   const [saving, setSaving] = useState(false);
   const info = PLATFORM_INFO[target.platform];
   const locked = ["published", "publishing"].includes(target.status);
+  const manual = Boolean(info?.manual);
+  const [marking, setMarking] = useState(false);
+  const markPosted = async () => {
+    setMarking(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/targets/${target.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "published" }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      onChange(d);
+      toast.success(`${info.label}: marked as posted`);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setMarking(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -64,6 +80,17 @@ function TargetEditor({ post, target, onChange }) {
         {target.url && <a href={target.url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary font-bold">View post</a>}
       </div>
       {target.error && <div className="text-[11px] text-rose-500">{target.error}</div>}
+      {manual && !locked && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-[11px] text-foreground space-y-1.5">
+          <div className="font-bold">Post by hand (no publishing API for groups)</div>
+          <p className="text-muted">When the post is approved: copy the caption, save the image, post it in the group, then mark it posted so it counts in the stats.</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => { navigator.clipboard.writeText(`${caption}${target.hashtags?.length ? `\n\n${target.hashtags.map((h) => `#${h}`).join(" ")}` : ""}`); toast.success("Caption copied"); }} className="px-2 py-1 rounded border border-divider font-bold">Copy caption</button>
+            {(post.videoUrl || post.keyframeUrl) && <a href={post.videoUrl || post.keyframeUrl} download target="_blank" rel="noopener noreferrer" className="px-2 py-1 rounded border border-divider font-bold">Download {post.videoUrl ? "video" : "image"}</a>}
+            {target.status === "manual" && <button type="button" onClick={markPosted} disabled={marking} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold disabled:opacity-50">{marking ? "…" : "Mark as posted"}</button>}
+          </div>
+        </div>
+      )}
       {info.titleMax && <input disabled={locked} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="w-full bg-bg-page border border-divider rounded px-2 py-1.5 text-xs" />}
       <textarea disabled={locked} rows={3} value={caption} onChange={(e) => setCaption(e.target.value)} className="w-full bg-bg-page border border-divider rounded px-2 py-1.5 text-xs" />
       <div className="flex items-center gap-2">
@@ -256,7 +283,7 @@ function Calendar() {
                         <div className="min-w-0">
                           <div className="text-[10px] font-bold truncate text-foreground">{p.hook || p.idea}</div>
                           <div className="text-[9px] uppercase font-black">{p.status}</div>
-                          <div className="flex gap-0.5 mt-0.5">{PLATFORMS.filter((pl) => p.targets.some((t) => t.platform === pl)).map((pl) => { const t = p.targets.find((x) => x.platform === pl); return <span key={pl} title={`${PLATFORM_INFO[pl].label} ${fmtTime(t.scheduledAt)} · ${t.status}`} className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[pl].color, opacity: t.status === "published" ? 1 : t.status === "failed" ? 0.9 : 0.35 }} />; })}</div>
+                          <div className="flex gap-0.5 mt-0.5">{Object.keys(PLATFORM_INFO).filter((pl) => p.targets.some((t) => t.platform === pl)).map((pl) => { const t = p.targets.find((x) => x.platform === pl); return <span key={pl} title={`${PLATFORM_INFO[pl].label} ${fmtTime(t.scheduledAt)} · ${t.status}`} className="w-2 h-2 rounded-full" style={{ background: PLATFORM_INFO[pl].color, opacity: t.status === "published" ? 1 : t.status === "failed" ? 0.9 : 0.35 }} />; })}</div>
                         </div>
                       </div>
                     </button>

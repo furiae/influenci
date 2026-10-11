@@ -35,6 +35,8 @@ export function reachRate(p, followers) {
 const BANDS = {
   instagram: [0.002, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.06, 0.09],
   facebook: [0.0005, 0.001, 0.002, 0.004, 0.006, 0.01, 0.015, 0.025, 0.04],
+  // Private group, denominator = members. Opted-in audience, so the bands sit well above the Page's.
+  facebook_group: [0.002, 0.004, 0.007, 0.012, 0.02, 0.03, 0.045, 0.07, 0.1],
 };
 
 export function absoluteBand(platform, er) {

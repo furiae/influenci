@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isManualPlatform } from "@/lib/platforms";
 import { enforceLimits } from "@/lib/content/limits";
 
 /** PATCH { caption?, title?, hashtags?, settings?, scheduledAt?, status?: "pending"|"queued"|"cancelled" } */
@@ -34,9 +35,11 @@ export async function PATCH(req, { params }) {
       data.scheduledAt = d;
     }
     if (body.status !== undefined) {
-      if (!["pending", "queued", "cancelled"].includes(body.status)) return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-      if (body.status === "queued" && target.post.status !== "approved") return NextResponse.json({ error: "Approve the post first." }, { status: 400 });
-      data.status = body.status;
+      const manual = isManualPlatform(target.platform);
+      if (!["pending", "queued", "cancelled", ...(manual ? ["manual", "published"] : [])].includes(body.status)) return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      if ((body.status === "queued" || body.status === "manual") && target.post.status !== "approved") return NextResponse.json({ error: "Approve the post first." }, { status: 400 });
+      data.status = manual && body.status === "queued" ? "manual" : body.status;
+      if (body.status === "published") { data.publishedAt = new Date(); if (typeof body.url === "string" && /^https?:\/\//.test(body.url)) data.url = body.url; }
       if (body.status !== "cancelled") data.error = null;
     }
 

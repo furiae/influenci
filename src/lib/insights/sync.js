@@ -13,7 +13,8 @@ export async function followersFor(actorId, platform) {
   const channel = await prisma.channel.findFirst({ where: { actorId, platform }, select: { followers: true } });
   if (channel?.followers) return channel.followers;
   const actor = await prisma.actor.findUnique({ where: { id: actorId }, select: { brandProfile: true } });
-  const n = Number(actor?.brandProfile?.followers?.[platform]);
+  const bp = actor?.brandProfile || {};
+  const n = Number(bp.followers?.[platform] ?? (platform === "facebook_group" ? bp.community?.facebookGroup?.members : undefined));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 

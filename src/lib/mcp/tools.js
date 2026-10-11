@@ -19,10 +19,11 @@ import { todayIn } from "@/lib/time";
 import { mergeBrandProfile } from "@/lib/personas/brand";
 import { renderCardToBlob, TEMPLATES } from "@/lib/render/cards";
 
-const PlatformEnum = z.enum(["facebook", "instagram", "tiktok", "x", "youtube"]);
+const PlatformEnum = z.enum(["facebook", "facebook_group", "instagram", "tiktok", "x", "youtube"]);
 
 const PostInput = z.object({
   platform: PlatformEnum.optional(),
+  author: z.enum(["brand", "member"]).optional().describe("member = a post by a member of the brand's own Facebook group (stored as a community benchmark, not as the brand's post)"),
   postedAt: z.string().describe("ISO 8601 date-time"),
   caption: z.string(),
   likes: z.number().int().min(0),
@@ -207,7 +208,7 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a brand post. With preview: true (recommended) Influenci only renders the image/video: no platforms, no date, nothing can publish; show the user the keyframeUrl from get_post, then call schedule_post. Without preview it is scheduled straight away as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), preview: z.boolean().default(true).describe("Render only; schedule later with schedule_post"), platforms: z.array(z.enum(["instagram", "facebook"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional() }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
+  server.registerTool("create_post", { title: "Create post", description: "Turn a recommendation (or a caption + visual brief) into a brand post. With preview: true (recommended) Influenci only renders the image/video: no platforms, no date, nothing can publish; show the user the keyframeUrl from get_post, then call schedule_post. Without preview it is scheduled straight away as a draft for approval in the calendar.", inputSchema: z.object({ brandId: z.string(), recommendationId: z.string().optional(), preview: z.boolean().default(true).describe("Render only; schedule later with schedule_post"), platforms: z.array(z.enum(["instagram", "facebook", "facebook_group"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time"), caption: z.string().optional(), hashtags: z.array(z.string()).optional(), title: z.string().optional(), format: z.enum(["image", "carousel", "reel", "video", "graphic"]).optional(), visualBrief: z.object({ subject: z.string(), composition: z.string().optional(), overlayText: z.string().optional(), palette: z.array(z.string()).optional(), notes: z.string().optional(), template: z.enum(["winner", "contender", "throwback", "question"]).optional(), fields: z.record(z.string(), z.string()).optional(), photoUrl: z.string().optional() }).optional(), referenceImages: z.array(z.string()).optional() }) }, async (args, extra) => {
     try {
       const user = await mcpUser(extra);
       const actor = await brandFor(user, args.brandId);
@@ -226,7 +227,7 @@ export function registerTools(server) {
     } catch (err) { return fail(err); }
   });
 
-  server.registerTool("schedule_post", { title: "Schedule a previewed post", description: "Final step after a preview the user approved: add platforms and a date. The post moves to the calendar as a draft that still needs approval before publishing.", inputSchema: z.object({ recommendationId: z.string(), platforms: z.array(z.enum(["instagram", "facebook"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time") }) }, async ({ recommendationId, platforms, scheduledAt }, extra) => {
+  server.registerTool("schedule_post", { title: "Schedule a previewed post", description: "Final step after a preview the user approved: add platforms and a date. The post moves to the calendar as a draft that still needs approval before publishing.", inputSchema: z.object({ recommendationId: z.string(), platforms: z.array(z.enum(["instagram", "facebook", "facebook_group"])).default(["facebook"]), scheduledAt: z.string().optional().describe("ISO date-time; defaults to the recommendation's best time") }) }, async ({ recommendationId, platforms, scheduledAt }, extra) => {
     try {
       const user = await mcpUser(extra);
       const rec = await prisma.recommendation.findFirst({ where: { id: recommendationId, actor: { userId: user.id } } });
