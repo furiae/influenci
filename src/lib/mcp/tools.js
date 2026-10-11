@@ -16,6 +16,7 @@ import { settleRecommendations, computeCalibration } from "@/lib/insights/summar
 import { enforceLimits } from "@/lib/content/limits";
 import { slotsForDay } from "@/lib/scheduler/cadence";
 import { todayIn } from "@/lib/time";
+import { mergeBrandProfile } from "@/lib/personas/brand";
 import { renderCardToBlob, TEMPLATES } from "@/lib/render/cards";
 
 const PlatformEnum = z.enum(["facebook", "instagram", "tiktok", "x", "youtube"]);
@@ -52,6 +53,15 @@ export function registerTools(server) {
     try {
       const actor = await brandFor(await mcpUser(extra), brandId);
       return json({ id: actor.id, name: actor.name, timezone: actor.timezone, brandProfile: actor.brandProfile, designSystem: actor.designSystem, designSystemVersion: actor.designSystemVersion, insightsSummary: actor.insightsSummary, systemPrompt: bibleToSystemPrompt(actor) });
+    } catch (err) { return fail(err); }
+  });
+
+  server.registerTool("update_brand", { title: "Update brand profile", description: "Merge fields into the brand profile (followers, bio, links, community such as a Facebook group, campaigns, voice, notes). Only the fields you pass change.", inputSchema: z.object({ brandId: z.string(), profile: z.record(z.string(), z.any()).describe("Partial brandProfile, e.g. { followers: { facebook: 22000 }, community: { facebookGroup: { name, members, private } } }") }) }, async ({ brandId, profile }, extra) => {
+    try {
+      const actor = await brandFor(await mcpUser(extra), brandId);
+      const merged = mergeBrandProfile(actor.brandProfile, profile);
+      await prisma.actor.update({ where: { id: actor.id }, data: { brandProfile: merged, bible: { ...(actor.bible || {}), category: merged.category } } });
+      return json({ brandProfile: merged });
     } catch (err) { return fail(err); }
   });
 
