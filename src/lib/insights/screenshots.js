@@ -21,10 +21,18 @@ const MEDIA = { graphic: "image", text: "text", link: "link", image: "image", ca
  * Re-running with the same post updates the counts and appends a metric snapshot.
  */
 export async function recordPosts(actorId, posts, { source = "screenshot", defaultPlatform = "facebook" } = {}) {
+  // Posts by members of the brand's own group are community benchmarks, not the brand's posts.
+  const members = posts.filter((p) => p.author === "member");
+  let community = { recorded: 0 };
+  if (members.length) {
+    const { recordCommunityPosts } = await import("./community");
+    community = await recordCommunityPosts(actorId, members.map((p) => ({ ...p, platform: "facebook_group" })));
+    posts = posts.filter((p) => p.author !== "member");
+  }
   const touched = [];
   const platforms = new Set();
   for (const p of posts) {
-    const platform = ["facebook", "instagram", "tiktok", "x", "youtube"].includes(p.platform) ? p.platform : defaultPlatform;
+    const platform = ["facebook", "facebook_group", "instagram", "tiktok", "x", "youtube"].includes(p.platform) ? p.platform : defaultPlatform;
     const postedAt = p.postedAt ? new Date(p.postedAt) : null;
     if (postedAt && Number.isNaN(postedAt.getTime())) continue;
     const externalId = p.externalId || screenshotExternalId(platform, postedAt, p.caption);
@@ -42,10 +50,10 @@ export async function recordPosts(actorId, posts, { source = "screenshot", defau
     platforms.add(platform);
   }
   for (const platform of platforms) await rescorePlatform(actorId, platform);
-  return { ids: touched, platforms: Array.from(platforms) };
+  return { ids: touched, platforms: Array.from(platforms), community: community.recorded };
 }
 
-const SYSTEM = `You transcribe social media post screenshots into structured data for an analytics tool. Read every visible number exactly (reactions/likes, comments, shares, views). Copy the caption verbatim including emojis and hashtags. A screenshot may contain more than one post; return each. Dates: use the year rule in the schema. Output only the requested JSON.`;
+const SYSTEM = `You transcribe social media post screenshots into structured data for an analytics tool. If the header names a Facebook *group* (e.g. "APEX Outdoor Rewards Group") the platform is facebook_group; if the poster is shown as "Group member" or an individual person rather than the page/brand, author is "member", otherwise "brand". Read every visible number exactly (reactions/likes, comments, shares, views). Copy the caption verbatim including emojis and hashtags. A screenshot may contain more than one post; return each. Dates: use the year rule in the schema. Output only the requested JSON.`;
 
 /** Claude vision over one screenshot URL → array of transcribed posts. */
 export async function extractFromScreenshot(url, { today = new Date(), defaultPlatform = "facebook" } = {}) {

@@ -67,3 +67,11 @@ describe("median / quantile", () => {
     expect(quantile([1, 2, 3, 4, 5], 0.9)).toBeCloseTo(4.6);
   });
 });
+
+describe("facebook_group bands", () => {
+  it("expects far more engagement per member than the Page gets per follower", () => {
+    expect(absoluteBand("facebook_group", 0.003)).toBeLessThan(absoluteBand("facebook", 0.003));
+    expect(absoluteBand("facebook_group", 0.1)).toBe(10);
+    expect(absoluteBand("facebook_group", 0.001)).toBe(1);
+  });
+});

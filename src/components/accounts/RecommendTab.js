@@ -29,7 +29,7 @@ function PreviewPanel({ r, platforms, toggle, when, setWhen, onAction, busy }) {
         <pre className="whitespace-pre-wrap font-sans text-xs text-foreground bg-bg-card border border-divider rounded-lg p-2 max-h-40 overflow-auto">{r.caption}{r.hashtags?.length ? `\n\n${r.hashtags.map((h) => `#${h}`).join(" ")}` : ""}</pre>
         <p className="text-[11px] text-muted">Nothing is scheduled yet. Happy with it? Pick the platforms and a time, then schedule. It lands in the calendar as a draft and still needs your approval before it publishes.</p>
         <div className="flex flex-wrap items-center gap-2">
-          {["instagram", "facebook"].map((k) => <label key={k} className="flex items-center gap-1 text-[11px] text-foreground"><input type="checkbox" checked={platforms.includes(k)} onChange={() => toggle(k)} className="accent-primary" />{PLATFORM_INFO[k].label}</label>)}
+          {["facebook", "facebook_group", "instagram"].map((k) => <label key={k} className="flex items-center gap-1 text-[11px] text-foreground"><input type="checkbox" checked={platforms.includes(k)} onChange={() => toggle(k)} className="accent-primary" />{PLATFORM_INFO[k].label}</label>)}
           <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="bg-bg-card border border-divider rounded px-2 py-1 text-[11px]" title="Leave empty to use the best time" />
           <span className="text-[10px] text-muted">{when ? "" : `empty = best time (${r.bestTime?.weekday || "weekday"} ${r.bestTime?.hourLocal ?? 10}:00)`}</span>
           <div className="flex-1" />
@@ -98,6 +98,7 @@ export default function RecommendTab({ actor, reload }) {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(null);
   const [filter, setFilter] = useState("");
+  const [surface, setSurface] = useState("");
   const [focus, setFocus] = useState("");
   const [count, setCount] = useState(10);
   const load = () => fetch(`/api/accounts/${actor.id}/recommendations${filter ? `?status=${filter}` : ""}`).then((r) => (r.ok ? r.json() : null)).then(setData);
@@ -176,8 +177,13 @@ export default function RecommendTab({ actor, reload }) {
       <CardMaker actor={actor} onCreated={() => { load(); reload(); }} />
       <div className="flex gap-1 text-xs">
         {[["", "Library"], ["saved", "Saved"], ["used", "Used"], ["dismissed", "Dismissed"]].map(([k, l]) => <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full font-bold ${filter === k ? "bg-primary text-white" : "border border-divider text-muted"}`}>{l}</button>)}
+        <span className="w-px bg-divider mx-1" />
+        {[["", "Page + Group"], ["page", "Page"], ["group", "Group"]].map(([k, l]) => <button key={k} onClick={() => setSurface(k)} className={`px-3 py-1.5 rounded-full font-bold ${surface === k ? "bg-foreground text-bg-card" : "border border-divider text-muted"}`}>{l}</button>)}
       </div>
-      {data.items.length === 0 ? <p className="text-xs text-muted text-center py-10">Nothing here yet.</p> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{data.items.map((r) => <RecCard key={r.id} r={r} onAction={onAction} busy={busy} />)}</div>}
+      {(() => {
+        const items = data.items.filter((r) => !surface || (surface === "group" ? r.platforms.includes("facebook_group") : !r.platforms.includes("facebook_group")));
+        return items.length === 0 ? <p className="text-xs text-muted text-center py-10">Nothing here yet.</p> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{items.map((r) => <RecCard key={r.id} r={r} onAction={onAction} busy={busy} />)}</div>;
+      })()}
     </div>
   );
 }

@@ -29,7 +29,7 @@ export const APEX_BRAND = {
     ctas: ["Enter TODAY!", "Enter This Year's Challenge and Get Rewarded for Your Harvest!", "Who's chasing that title this season? 👀", "Post your pictures in the comments", "Head to the leaderboard"],
     hashtagSets: { core: ["apexoutdoorrewards", "whitetailchallenge", "deerhunting", "hunting", "bowhunting"], seasonal: ["openingday", "rut", "trailcamtuesday", "throwbackthursday", "turkeyseason"] },
     links: { website: "https://apexoutdoorrewards.com", facebook: "ApexOutdoorRewards", instagram: "apex_outdoor_rewards", tiktok: "apexoutdoorrewards", youtube: "apexoutdoorrewards", phone: "(615) 716-1210", email: "teamapex@apexoutdoorrewards.com" },
-    followers: { facebook: 22000, instagram: null },
+    followers: { facebook: 22000, instagram: null, facebook_group: 9100 },
     following: { facebook: 152 },
     bio: "APEX Outdoor Rewards offers State-Specific Turkey & Whitetail Hunting Events with Fishing Challenges COMING SOON! Get Rewarded for Enjoying your Passion while Promoting Community and Contributing to Conservation Efforts! Reward Yourself & ENTER TODAY!",
     pageCategory: "Sports & recreation",
@@ -124,4 +124,14 @@ export const APEX_POSTS = [
   { postedAt: d("10-08T12:00"), mediaType: "video", format: "program announcement", caption: "‼️ 2026 WHITETAIL HUNTERS ‼️\nYou're Already Hunting — Why Not Get Rewarded For It? 🦌\nThe APEX Whitetail Challenge is back for 2026 with BIG rewards… (overlay: 'REWARDS JUST GOT EASIER')", likes: 5, comments: 0, shares: 24 },
   { postedAt: d("10-09T10:00"), mediaType: "image", format: "throwback card", caption: "🦌 Throwback Thursday! 🏆\nLet's Rewind to Devon Pruett and his Indiana 2023 harvest.", likes: 2, comments: 0, shares: 1 },
   { postedAt: d("10-09T13:54"), mediaType: "video", format: "testimonial", caption: "Illinois APEX Hunter — Jason Rozzi — Has Made Money EVERY SINGLE YEAR that He's Done the Whitetail Challenge! Why Aren't You?! Enter TODAY 💵🦌", likes: 3, comments: 0, shares: 1 },
+];
+
+/**
+ * Posts by members of the private "APEX Outdoor Rewards Group" (9.1K members),
+ * seen from outside the group. Stored as community benchmarks, not as Apex posts.
+ */
+export const APEX_GROUP_MEMBER_POSTS = [
+  { postedAt: "2026-04-11T12:00", mediaType: "text", caption: "When we enter are we automatically entered into the Contingency Rewards or is that separate as well. Multi-Beard Rewards to be precise and are we competing with all states in that Contingency Rewards or just the state your registered in?", likes: 2, comments: 1, mediaDescription: "Rules question from a member about Contingency / Multi-Beard Rewards" },
+  { postedAt: "2026-05-11T14:00", mediaType: "image", caption: "The drought is over! Finally on the board, what a hunt. I've worked everyday since turkey season started here in SWMO so have only got to hunt the afternoon/evenings. Got out around noon today and got this bird to fire up about 1 and fly the creek 😀🦃", likes: 6, comments: 3, mediaDescription: "Harvested turkey next to a hen decoy in tall grass; a member replied about afternoon hunting in Missouri" },
+  { postedAt: "2023-10-11T17:00", mediaType: "image", caption: "Good day after work, finally found one of my shooters shed he's going to be a good one this season", likes: 22, comments: 2, mediaDescription: "Shed antler found on the ground by a fence line" },
 ];

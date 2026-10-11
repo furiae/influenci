@@ -30,6 +30,8 @@ Besides AI personas, Influenci manages **real brand accounts** (`/accounts`): co
 
 Because the Pages are ones you administer, Meta's Standard Access is enough: no App Review is needed. Daily syncs run from the scheduler ticker.
 
+A private **Facebook group** is a second surface (`facebook_group`): Meta retired the Groups API, so group posts come in as screenshots, are scored against the member count, get their own recommendations (Recommend tab → Group filter), and are posted by hand from the calendar (copy caption, download image, mark as posted). Member posts are stored as community benchmarks, not as the brand's posts.
+
 No Meta app yet? The Posts tab imports **screenshots** of posts (Claude reads caption, date, likes, comments, shares), and `/accounts` has a one-click Apex Outdoor Rewards quick start.
 
 ## Claude connector (MCP) — run the AI on your Claude subscription

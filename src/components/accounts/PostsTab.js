@@ -119,7 +119,7 @@ export function ScreenshotImport({ actor, onDone }) {
   };
   return (
     <div className="flex items-center gap-2">
-      <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-bg-page border border-divider rounded-lg px-2 py-2 text-xs"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option></select>
+      <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-bg-page border border-divider rounded-lg px-2 py-2 text-xs"><option value="facebook">Facebook</option><option value="facebook_group">Facebook Group</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option></select>
       <button onClick={() => fileRef.current?.click()} disabled={Boolean(busy) || subscription} className={btnPrimary} title={subscription ? "AI mode is subscription: paste the screenshots into Claude with the import-screenshots prompt instead" : "Screenshots of posts (one or several per image). Claude reads the caption, date, likes, comments and shares."}>{busy ? <FiLoader className="animate-spin" /> : <FiUpload />} {busy || "Import from screenshots"}</button>
       <input ref={fileRef} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pick} />
     </div>
@@ -162,7 +162,7 @@ export default function PostsTab({ actor }) {
     <div className="space-y-4">
       <Section>
         <div className="flex flex-wrap gap-2 items-center">
-          <select value={filters.platform} onChange={set("platform")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm"><option value="">All platforms</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select>
+          <select value={filters.platform} onChange={set("platform")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm"><option value="">All platforms</option><option value="facebook">Facebook Page</option><option value="facebook_group">Facebook Group</option><option value="instagram">Instagram</option></select>
           <select value={filters.format} onChange={set("format")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm"><option value="">All formats</option>{data.formats.map((f) => <option key={f.key} value={f.key}>{f.key} ({f.n})</option>)}</select>
           <select value={filters.minScore} onChange={set("minScore")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm"><option value="">Any score</option>{[8, 6, 4].map((s) => <option key={s} value={s}>score ≥ {s}</option>)}</select>
           <select value={filters.sort} onChange={set("sort")} className="bg-bg-page border border-divider rounded-lg px-3 py-2 text-sm">{SORTS.map(([k, l]) => <option key={k} value={k}>Sort: {l}</option>)}</select>

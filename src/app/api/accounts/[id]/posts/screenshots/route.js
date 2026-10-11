@@ -15,7 +15,7 @@ export async function POST(req, { params }) {
   const { actor } = await owned(id);
   if (!actor) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json().catch(() => ({}));
-  const platform = ["facebook", "instagram", "tiktok", "x", "youtube"].includes(body.platform) ? body.platform : "facebook";
+  const platform = ["facebook", "facebook_group", "instagram", "tiktok", "x", "youtube"].includes(body.platform) ? body.platform : "facebook";
   try {
     if (Array.isArray(body.posts) && body.posts.length) {
       const r = await recordPosts(id, body.posts.slice(0, 200), { source: body.source === "manual" ? "manual" : "screenshot", defaultPlatform: platform });

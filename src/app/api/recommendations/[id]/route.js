@@ -23,7 +23,7 @@ export async function PATCH(req, { params }) {
   if (body.caption !== undefined) data.caption = String(body.caption).slice(0, 5000);
   if (body.title !== undefined) data.title = String(body.title).slice(0, 120);
   if (Array.isArray(body.hashtags)) data.hashtags = body.hashtags.map((h) => String(h).replace(/^#/, "")).slice(0, 30);
-  if (Array.isArray(body.platforms)) data.platforms = body.platforms.filter((p) => ["instagram", "facebook"].includes(p));
+  if (Array.isArray(body.platforms)) data.platforms = body.platforms.filter((p) => ["instagram", "facebook", "facebook_group"].includes(p));
   if (body.visualBrief && typeof body.visualBrief === "object") data.visualBrief = { ...(rec.visualBrief || {}), ...body.visualBrief };
   const updated = await prisma.recommendation.update({ where: { id }, data });
   return NextResponse.json(updated);

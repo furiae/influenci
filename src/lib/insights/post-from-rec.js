@@ -58,7 +58,7 @@ export async function createPostFromRecommendation(rec, { platforms, date, refer
   const actor = await prisma.actor.findUnique({ where: { id: rec.actorId } });
   if (!actor) throw new Error("Actor not found");
   const tz = actor.timezone || "America/New_York";
-  const chosen = preview ? [] : (platforms?.length ? platforms : rec.platforms).filter((p) => ["instagram", "facebook"].includes(p));
+  const chosen = preview ? [] : (platforms?.length ? platforms : rec.platforms).filter((p) => ["instagram", "facebook", "facebook_group"].includes(p));
   if (!preview && !chosen.length) throw new Error("Pick at least one platform");
   const scheduledAt = preview ? null : /^\d{4}-\d{2}-\d{2}T/.test(date || "") ? new Date(date) : nextSlot(rec.bestTime || {}, tz);
   const planDate = preview ? todayIn(tz) : todayIn(tz) <= scheduledAt.toISOString().slice(0, 10) ? scheduledAt.toISOString().slice(0, 10) : todayIn(tz);
@@ -103,7 +103,7 @@ export async function schedulePreviewPost(rec, { platforms, date, userId } = {})
   if (post.status === "cancelled") throw new Error("This preview was discarded");
   const actor = await prisma.actor.findUnique({ where: { id: post.actorId } });
   const tz = actor.timezone || "America/New_York";
-  const chosen = (platforms?.length ? platforms : rec.platforms).filter((p) => ["instagram", "facebook"].includes(p));
+  const chosen = (platforms?.length ? platforms : rec.platforms).filter((p) => ["instagram", "facebook", "facebook_group"].includes(p));
   if (!chosen.length) throw new Error("Pick at least one platform");
   const scheduledAt = /^\d{4}-\d{2}-\d{2}T/.test(date || "") ? new Date(date) : nextSlot(rec.bestTime || {}, tz);
   const planDate = todayIn(tz) <= scheduledAt.toISOString().slice(0, 10) ? scheduledAt.toISOString().slice(0, 10) : todayIn(tz);

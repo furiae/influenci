@@ -4,6 +4,10 @@
  */
 export const PLATFORMS = ["instagram", "facebook", "tiktok", "youtube", "pinterest", "x"];
 
+/** Surfaces with no publishing API: the post is prepared here and posted by hand. */
+export const MANUAL_PLATFORMS = ["facebook_group"];
+export const isManualPlatform = (p) => MANUAL_PLATFORMS.includes(p);
+
 export const PLATFORM_INFO = {
   instagram: {
     label: "Instagram",
@@ -14,6 +18,16 @@ export const PLATFORM_INFO = {
     video: { maxSec: 90, minSec: 3, maxBytes: 300 * 1024 * 1024, aspect: "9:16" },
     image: true,
     aiFlag: "caption",
+  },
+  facebook_group: {
+    label: "Facebook Group",
+    app: "meta",
+    color: "#0B3D91",
+    captionMax: 63206,
+    hashtagsMax: 10,
+    video: { maxSec: 90, minSec: 3, maxBytes: 1024 * 1024 * 1024, aspect: "9:16" },
+    image: true,
+    manual: true, // Meta retired the Groups API (2024): no import, no publishing; screenshots in, post by hand out
   },
   facebook: {
     label: "Facebook",
