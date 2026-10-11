@@ -210,8 +210,8 @@ async function generateKeyframeDirect(postId, attempt) {
     const refs = [...(post.script?.referenceImages || []), ...(post.script?.visualBrief?.referenceImages || [])].filter(Boolean);
     const pathname = `keyframes/${post.actor.slug || post.actorId}/${postId}-${attempt}.png`;
     const r = await generateBrandImage({ actor: post.actor, post, seed: 1000 + attempt * 7919, settings, pathname });
-    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", data: { attempt, provider, prompt: r.prompt, ignoredReferenceImages: refs.length || undefined } });
-    console.log("[RENDER] keyframe generated", postId, "attempt", attempt, provider);
+    await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", message: r.composited ? "clean photo + headline composited with the photo template" : undefined, data: { attempt, provider, prompt: r.prompt, rawUrl: r.rawUrl, composited: r.composited, fields: r.fields, ignoredReferenceImages: refs.length || undefined } });
+    console.log("[RENDER] keyframe generated", postId, "attempt", attempt, provider, r.composited ? "composited" : "raw");
     return { url: r.url };
   } catch (err) {
     const message = err?.message || String(err);

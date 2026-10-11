@@ -15,6 +15,24 @@ export function buildBrandImagePrompt(actor, post) {
   return `${base}${brief.subject ? "" : ` Scene: ${post.idea || post.hook || "outdoor lifestyle"}.`}`.trim();
 }
 
+/**
+ * Prompt for generators that cannot spell (FLUX schnell and friends): the same
+ * scene with no lettering at all. The headline is composited afterwards with
+ * the free photo template, so the words are always right.
+ */
+export function cleanBrandImagePrompt(actor, post) {
+  const brief = { ...(post.script?.visualBrief || {}), overlayText: undefined };
+  const base = designSystemToImagePrompt(actor.designSystem, brief) || brief.notes || "";
+  const scene = brief.subject ? "" : ` Scene: ${post.idea || post.hook || "outdoor lifestyle"}.`;
+  return `${base}${scene} Clean photograph with no text, no lettering, no words, no signs, no logos, no watermark; leave the lower third uncluttered for a headline.`.replace(/\s+/g, " ").trim();
+}
+
+/** The words the post wants on the image, if any. */
+export function brandOverlayText(post) {
+  const s = post.script || {};
+  return String(s.overlayText || s.visualBrief?.overlayText || "").trim();
+}
+
 export function brandAspect(post) {
   const a = post.script?.visualBrief?.aspect;
   if (["1:1", "4:5", "9:16", "16:9", "3:4"].includes(a)) return a;
