@@ -2,7 +2,9 @@ import { prisma } from "@/lib/prisma";
 
 /** Resolve the Clerk user id carried by the OAuth token into our User row. */
 export async function mcpUser(extra) {
-  const userId = extra?.authInfo?.extra?.userId || extra?.authInfo?.extra?.sub || extra?.authInfo?.clientId;
+  // @modelcontextprotocol/server 2.x surfaces the verified token as ctx.http.authInfo; older builds used ctx.authInfo.
+  const info = extra?.http?.authInfo || extra?.authInfo;
+  const userId = info?.extra?.userId || info?.extra?.sub || info?.clientId;
   if (!userId) throw new Error("Not signed in");
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error("Sign in to app.influenci.ai once before using the connector");

@@ -36,8 +36,8 @@ No Meta app yet? The Posts tab imports **screenshots** of posts (Claude reads ca
 
 Influenci is also a remote **MCP server** at `/api/mcp`, so Claude.ai, Claude Desktop and Claude Code can read a brand's stats and write back analyses, design systems, recommendations and posts under your Max/Team subscription instead of the pay-per-token `ANTHROPIC_API_KEY`.
 
-1. Clerk Dashboard → Configure → **OAuth applications** → enable **Dynamic Client Registration** (Claude.ai registers itself; no pasted tokens).
-2. Claude.ai → Settings → Connectors → **Add custom connector** → `https://app.influenci.ai/api/mcp` → sign in with your Influenci account.
+1. Clerk Dashboard → select the environment the site runs on (Development when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` starts with `pk_test`) → Configure → Developers → **OAuth applications** → **Settings** → turn on **Publish DCR support**. Leave **Publish CIMD support** off: Clerk cannot resolve Claude's hosted client document and the sign-in fails with `invalid_client`. Keep *Require PKCE* on and *Opaque access tokens* selected.
+2. Claude.ai → Settings → Connectors → **Add custom connector** → `https://app.influenci.ai/api/mcp` (no trailing dot) → Authentication *Sign in now*, OAuth client *Register automatically* → Add → Connect → sign in with your Influenci account.
    Claude Code: `claude mcp add --transport http influenci https://app.influenci.ai/api/mcp`.
 3. Settings → Platform apps → **AI** → choose *Claude subscription*. The import workflow then skips the server-side Claude steps and the Overview, Design, Recommend and Posts tabs show "Do this in Claude" with the prompt to run.
 
