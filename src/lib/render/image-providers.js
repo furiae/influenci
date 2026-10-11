@@ -34,7 +34,8 @@ const NEG = "blurry, low quality, distorted, deformed, extra limbs, bad hands, t
 export async function getImageSettings() {
   const row = await prisma.appSetting.findUnique({ where: { key: KEY } }).catch(() => null);
   const v = row?.value || {};
-  const provider = IMAGE_PROVIDERS[v.provider] ? v.provider : process.env.WAVESPEED_API_KEY ? "wavespeed" : "zerogpu";
+  // Free by default; Wavespeed is an explicit choice even when its key is set.
+  const provider = IMAGE_PROVIDERS[v.provider] ? v.provider : "zerogpu";
   return {
     provider,
     hfToken: v.hfTokenEnc ? safeDecrypt(v.hfTokenEnc) : process.env.HF_TOKEN || null,

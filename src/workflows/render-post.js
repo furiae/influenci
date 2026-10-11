@@ -36,7 +36,7 @@ async function renderBody(postId) {
   await compositeCard(postId);
 
   let qa = await currentQa(postId);
-  const provider = qa.pass ? null : await resolveImageProvider(postId);
+  let { provider, brand } = qa.pass ? {} : await resolveImageProvider(postId);
   for (let attempt = 0; attempt < MAX_KEYFRAME_ATTEMPTS && !qa.pass; attempt++) {
     if (provider !== "wavespeed") {
       // Free providers (ZeroGPU Space, your own GPU endpoint) answer synchronously.
@@ -48,14 +48,22 @@ async function renderBody(postId) {
       qa = await storeAndQaKeyframe(postId, attempt, r.url, { provider, stored: true });
       continue;
     }
-    const requestId = await submitKeyframe(postId, attempt);
     let r;
-    do {
-      await sleep("15s");
-      r = await pollPrediction(requestId);
-    } while (!r.done);
+    try {
+      const requestId = await submitKeyframe(postId, attempt);
+      do {
+        await sleep("15s");
+        r = await pollPrediction(requestId);
+      } while (!r.done);
+    } catch (err) {
+      // Wavespeed refused (no credits, bad key, outage). Brand posts fall back to
+      // the free Space for the remaining attempts instead of failing the preview.
+      if (!brand) throw err;
+      r = { done: true, url: null, error: err?.message || String(err) };
+    }
     if (!r.url) {
       qa = { pass: false, issues: [r.error || "keyframe generation failed"] };
+      if (brand) provider = await pinImageProvider(postId, "zerogpu", r.error || "wavespeed failed");
       continue;
     }
     qa = await storeAndQaKeyframe(postId, attempt, r.url, { provider });
@@ -173,11 +181,21 @@ async function currentQa(postId) {
 async function resolveImageProvider(postId) {
   "use step";
   const post = await loadPost(postId);
-  if (post.actor.kind !== "brand") return "wavespeed";
-  if (post.script?.keyframeProvider) return post.script.keyframeProvider;
+  if (post.actor.kind !== "brand") return { provider: "wavespeed", brand: false };
+  if (post.script?.keyframeProvider) return { provider: post.script.keyframeProvider, brand: true };
   const { getImageSettings } = await import("@/lib/render/image-providers");
   const { provider } = await getImageSettings();
   await prisma.post.update({ where: { id: postId }, data: { script: { ...(post.script || {}), keyframeProvider: provider } } });
+  return { provider, brand: true };
+}
+
+/** Switch a brand post to another generator mid-render (used for the Wavespeed → free fallback). */
+async function pinImageProvider(postId, provider, reason) {
+  "use step";
+  const post = await loadPost(postId);
+  await prisma.post.update({ where: { id: postId }, data: { script: { ...(post.script || {}), keyframeProvider: provider } } });
+  await logEvent({ postId, actorId: post.actorId, kind: "render", step: "keyframe_submit", status: "retry", message: `switching to ${provider}: ${String(reason).slice(0, 200)}`, data: { provider, from: post.script?.keyframeProvider || null } });
+  console.warn("[RENDER] image provider fallback", postId, "→", provider, reason);
   return provider;
 }
 
