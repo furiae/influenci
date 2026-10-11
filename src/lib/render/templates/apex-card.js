@@ -336,7 +336,8 @@ export async function renderSvgPng(svgInput, { width = W } = {}) {
   if (svg.length > 2 * 1024 * 1024) throw new Error("SVG is too large (max 2 MB)");
   if (/<script[\s>]/i.test(svg)) throw new Error("SVG must not contain scripts");
   svg = await inlineRemoteImages(svg);
-  const fontFiles = ["oswald-latin-700-normal.woff", "oswald-latin-500-normal.woff", "inter-latin-800-normal.woff", "inter-latin-500-normal.woff"].map((f) => path.join(FONT_DIR, f));
+  // resvg's font loader reads sfnt (TTF/OTF) only; the .ttf twins are generated from the .woff files by scripts/woff-to-ttf.mjs.
+  const fontFiles = ["oswald-latin-700-normal.ttf", "oswald-latin-500-normal.ttf", "inter-latin-800-normal.ttf", "inter-latin-500-normal.ttf"].map((f) => path.join(FONT_DIR, f));
   const r = new Resvg(svg, { fitTo: { mode: "width", value: width }, font: { fontFiles, loadSystemFonts: false, defaultFontFamily: "Oswald" } });
   const out = r.render();
   return { png: Buffer.from(out.asPng()), width: out.width, height: out.height };

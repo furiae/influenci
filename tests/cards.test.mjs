@@ -44,6 +44,7 @@ describe("designed SVG rasterizer", () => {
     const { png, width, height } = await renderSvgPng(svg);
     expect(png.subarray(0, 4).equals(PNG)).toBe(true);
     expect([width, height]).toEqual([1080, 1350]);
+    expect(png.length).toBeGreaterThan(20000); // a flat red card with no glyphs is ~9 KB; text must actually render
     await expect(renderSvgPng(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)).rejects.toThrow(/scripts/);
   }, 30000);
 });
