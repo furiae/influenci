@@ -26,6 +26,7 @@ function PreviewPanel({ r, platforms, toggle, when, setWhen, onAction, busy }) {
       <div className="space-y-2 min-w-0">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted flex items-center gap-2"><FiEye /> Preview · {rendering ? "rendering" : failed ? "failed" : "ready"}{card ? " · free card" : ""}</div>
         {failed && p.renderError && <p className="text-[11px] text-rose-500">{p.renderError}</p>}
+        {failed && /wavespeed|credits/i.test(p.renderError || "") && <p className="text-[11px] text-muted">Free fix: images now default to the free FLUX generator, and a Wavespeed failure falls back to it automatically. Click <b>Regenerate</b>; change the generator under <Link href="/settings/platforms#ai" className="text-primary font-bold">Settings → AI → Image generator</Link>.</p>}
         <pre className="whitespace-pre-wrap font-sans text-xs text-foreground bg-bg-card border border-divider rounded-lg p-2 max-h-40 overflow-auto">{r.caption}{r.hashtags?.length ? `\n\n${r.hashtags.map((h) => `#${h}`).join(" ")}` : ""}</pre>
         <p className="text-[11px] text-muted">Nothing is scheduled yet. Happy with it? Pick the platforms and a time, then schedule. It lands in the calendar as a draft and still needs your approval before it publishes.</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -33,7 +34,7 @@ function PreviewPanel({ r, platforms, toggle, when, setWhen, onAction, busy }) {
           <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className="bg-bg-card border border-divider rounded px-2 py-1 text-[11px]" title="Leave empty to use the best time" />
           <span className="text-[10px] text-muted">{when ? "" : `empty = best time (${r.bestTime?.weekday || "weekday"} ${r.bestTime?.hourLocal ?? 10}:00)`}</span>
           <div className="flex-1" />
-          <button onClick={() => onAction(r, "regenerate")} disabled={busy === r.id || rendering} className={btnGhost} title="Render it again (uses render credits unless it is a card)"><FiRefreshCw /> Regenerate</button>
+          <button onClick={() => onAction(r, "regenerate")} disabled={busy === r.id || rendering} className={btnGhost} title="Render it again with the image generator chosen in Settings → AI (free by default; cards are always free)"><FiRefreshCw /> Regenerate</button>
           <button onClick={() => onAction(r, "discard-preview")} disabled={busy === r.id} className={btnGhost}><FiTrash2 /> Discard</button>
           <button onClick={() => onAction(r, "schedule", { platforms, date: when ? new Date(when).toISOString() : undefined })} disabled={busy === r.id || !platforms.length || rendering || failed} className={btnPrimary}>{busy === r.id ? <FiLoader className="animate-spin" /> : <FiSend />} Schedule</button>
         </div>
