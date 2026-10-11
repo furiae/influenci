@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ownedBrand as owned } from "@/lib/accounts";
 import { recommendPosts, recommendLike } from "@/lib/insights/recommend";
+import { serverAiEnabled, subscriptionHint } from "@/lib/content/ai-mode";
 
 export const maxDuration = 300;
 
@@ -21,6 +22,7 @@ export async function POST(req, { params }) {
   const { actor } = await owned(id);
   if (!actor) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json().catch(() => ({}));
+  if (!(await serverAiEnabled())) return NextResponse.json(subscriptionHint("recommend-posts"), { status: 409 });
   try {
     const platforms = Array.isArray(body.platforms) && body.platforms.length ? body.platforms : ["instagram", "facebook"];
     const r = body.channelPostId || body.benchmarkPostId

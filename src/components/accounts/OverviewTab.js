@@ -7,6 +7,7 @@ import { FiLoader, FiRefreshCw } from "react-icons/fi";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Section, fmt, pct, btnGhost } from "@/components/ui/form";
 import { PostCard, PostDrawer } from "./PostsTab";
+import { DoInClaude } from "@/components/ui/ai-hint";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const C = { primary: "var(--primary)", muted: "var(--secondary-text)", grid: "var(--divider)", ig: "#E1306C", fb: "#1877F2" };
@@ -95,6 +96,7 @@ export default function OverviewTab({ actor, reload }) {
       </div>
 
       <Section title={n?.headline || "Performance summary"} hint={data.summary?.computedAt ? `Claude's read of the numbers · ${new Date(data.summary.computedAt).toLocaleString()}` : "Run the summary to get Claude's read of the numbers"} right={<button onClick={summarize} disabled={busy} className={btnGhost}>{busy ? <FiLoader className="animate-spin" /> : <FiRefreshCw />} {n ? "Refresh" : "Summarise"}</button>}>
+        <DoInClaude prompt="weekly-review" brandId={actor.id} what="Claude's read of the numbers is saved here" />
         {n ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-foreground">
             <div><div className="font-black text-emerald-600 mb-1">What&apos;s working</div><ul className="list-disc ml-4 space-y-1">{n.working.map((x, i) => <li key={i}>{x}</li>)}</ul></div>

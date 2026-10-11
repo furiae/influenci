@@ -9,6 +9,7 @@ import { upsertListedPosts, refreshPostMetrics, refreshAccountInsights, rescoreC
 import { analyzePending } from "@/lib/insights/analyze";
 import { buildInsightsSummary } from "@/lib/insights/summary";
 import { learnDesignSystem } from "@/lib/insights/design-system";
+import { serverAiEnabled } from "@/lib/content/ai-mode";
 
 const METRICS_BATCH = 15;
 const ANALYZE_BATCH = 4;
@@ -149,7 +150,7 @@ accountInsights.maxRetries = 2;
 async function analyzeBatch(channelId) {
   "use step";
   const channel = await loadChannel(channelId);
-  if (!process.env.ANTHROPIC_API_KEY) return { done: true, skipped: "no ANTHROPIC_API_KEY" };
+  if (!(await serverAiEnabled())) return { done: true, skipped: "AI mode is subscription (analyse in Claude via the connector)" };
   const pending = await prisma.channelPost.count({ where: { channelId, analyzedAt: null } });
   if (!pending) return { done: true };
   const r = await analyzePending(channel.actorId, { limit: ANALYZE_BATCH });
@@ -172,6 +173,7 @@ async function rescore(channelId) {
 async function summarize(channelId) {
   "use step";
   const channel = await loadChannel(channelId);
+  if (!(await serverAiEnabled())) return { skipped: "AI mode is subscription (run the weekly-review prompt in Claude)" };
   try {
     await buildInsightsSummary(channel.actorId);
     return { ok: true };
@@ -187,6 +189,7 @@ async function learn(channelId) {
   "use step";
   const channel = await loadChannel(channelId);
   if (!channel.actor.designSystem) return { skipped: "no design system yet" };
+  if (!(await serverAiEnabled())) return { skipped: "AI mode is subscription (run the extract-design-system prompt in Claude)" };
   try {
     const r = await learnDesignSystem(channel.actorId);
     return r;

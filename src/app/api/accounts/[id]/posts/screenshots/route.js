@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ownedBrand as owned } from "@/lib/accounts";
 import { importScreenshots, recordPosts } from "@/lib/insights/screenshots";
 import { analyzePending } from "@/lib/insights/analyze";
+import { serverAiEnabled, subscriptionHint } from "@/lib/content/ai-mode";
 
 export const maxDuration = 300;
 
@@ -22,7 +23,7 @@ export async function POST(req, { params }) {
     }
     const urls = (Array.isArray(body.urls) ? body.urls : []).filter((u) => /^https:\/\//.test(u)).slice(0, 40);
     if (!urls.length) return NextResponse.json({ error: "Upload at least one screenshot" }, { status: 400 });
-    if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: "No ANTHROPIC_API_KEY on the server. Use the Claude connector's import-screenshots prompt instead." }, { status: 400 });
+    if (!(await serverAiEnabled())) return NextResponse.json(subscriptionHint("import-screenshots"), { status: 409 });
     const r = await importScreenshots(id, urls, { defaultPlatform: platform });
     if (body.analyze !== false && r.posts) await analyzePending(id, { limit: Math.min(10, r.posts) }).catch(() => {});
     return NextResponse.json(r);

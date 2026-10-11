@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ownedBrand as owned } from "@/lib/accounts";
 import { extractDesignSystem, saveDesignSystem, learnDesignSystem, resolveSuggestion } from "@/lib/insights/design-system";
 import { prisma } from "@/lib/prisma";
+import { serverAiEnabled, subscriptionHint } from "@/lib/content/ai-mode";
 
 export const maxDuration = 120;
 
@@ -19,6 +20,7 @@ export async function POST(req, { params }) {
   const { actor } = await owned(id);
   if (!actor) return new NextResponse("Unauthorized", { status: 401 });
   const body = await req.json().catch(() => ({}));
+  if ((body.action === "extract" || body.action === "learn") && !(await serverAiEnabled())) return NextResponse.json(subscriptionHint("extract-design-system"), { status: 409 });
   try {
     if (body.action === "extract") return NextResponse.json({ designSystem: await extractDesignSystem(id) });
     if (body.action === "learn") return NextResponse.json(await learnDesignSystem(id));

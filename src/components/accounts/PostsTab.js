@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { FiLoader, FiExternalLink, FiX, FiZap, FiRefreshCw, FiUpload } from "react-icons/fi";
 import { PLATFORM_INFO } from "@/lib/platforms";
 import { Section, ScoreBadge, fmt, pct, when, btnPrimary, btnGhost } from "@/components/ui/form";
+import { DoInClaude, useAiMode } from "@/components/ui/ai-hint";
 
 const SORTS = [["score", "Score"], ["date", "Newest"], ["er", "Engagement rate"], ["reach", "Reach"]];
 
@@ -91,6 +92,8 @@ export function ScreenshotImport({ actor, onDone }) {
   const fileRef = useRef(null);
   const [platform, setPlatform] = useState("facebook");
   const [busy, setBusy] = useState(null);
+  const ai = useAiMode();
+  const subscription = ai?.mode === "subscription";
   const pick = async (e) => {
     const files = Array.from(e.target.files || []).slice(0, 40);
     e.target.value = "";
@@ -117,7 +120,7 @@ export function ScreenshotImport({ actor, onDone }) {
   return (
     <div className="flex items-center gap-2">
       <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="bg-bg-page border border-divider rounded-lg px-2 py-2 text-xs"><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="tiktok">TikTok</option></select>
-      <button onClick={() => fileRef.current?.click()} disabled={Boolean(busy)} className={btnPrimary} title="Screenshots of posts (one or several per image). Claude reads the caption, date, likes, comments and shares.">{busy ? <FiLoader className="animate-spin" /> : <FiUpload />} {busy || "Import from screenshots"}</button>
+      <button onClick={() => fileRef.current?.click()} disabled={Boolean(busy) || subscription} className={btnPrimary} title={subscription ? "AI mode is subscription: paste the screenshots into Claude with the import-screenshots prompt instead" : "Screenshots of posts (one or several per image). Claude reads the caption, date, likes, comments and shares."}>{busy ? <FiLoader className="animate-spin" /> : <FiUpload />} {busy || "Import from screenshots"}</button>
       <input ref={fileRef} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={pick} />
     </div>
   );
@@ -167,6 +170,7 @@ export default function PostsTab({ actor }) {
           <span className="text-[11px] text-muted">{data.total} posts</span>
           <ScreenshotImport actor={actor} onDone={load} />
         </div>
+        <div className="mt-3"><DoInClaude prompt="import-screenshots" brandId={actor.id} what="paste the screenshots in Claude; posts are recorded and scored here" /></div>
       </Section>
       {data.items.length === 0 ? (
         <p className="text-xs text-muted text-center py-10">No posts yet. Connect a channel and import its history, or drop screenshots of posts with the button above.</p>
